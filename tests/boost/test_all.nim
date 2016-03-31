@@ -1,5 +1,1 @@
-import unittest
-
-suite "Test":
-  test "Test":
-    echo "test"
+import test_limits
