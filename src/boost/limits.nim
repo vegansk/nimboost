@@ -13,14 +13,14 @@ template intLimitDeclMD(typ: typedesc, minValue4, maxValue4, minValue8, maxValue
     elif sizeof(typ) == 8:
       (typ)minValue8
     else:
-      {.fatal: "Limits: can't get minimal value for type when sizeof == " & $sizeof(typ).}
+      {.fatal: "Limits: can't get minimal value for type " & astToStr(typ) & " when sizeof == " & $sizeof(typ).}
   proc max*(t = typ): typ =
     when sizeof(typ) == 4:
       (typ)maxValue4
     elif sizeof(typ) == 8:
       (typ)maxValue8
     else:
-      {.fatal: "Limits: can't get maximal value for type when sizeof == " & $sizeof(typ).}
+      {.fatal: "Limits: can't get maximal value for type " & astToStr(typ) & " when sizeof == " & $sizeof(typ).}
 
 # Signed integer types
 int8.ordLimitDecl
