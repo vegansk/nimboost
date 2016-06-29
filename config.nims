@@ -7,6 +7,8 @@ srcdir        = "src"
 
 requires "nim >= 0.13.1"
 
+import ospaths
+
 proc buildBase(debug: bool, bin: string, src: string) =
   switch("out", (thisDir() & "/" & bin).toExe)
   --nimcache: build
@@ -33,7 +35,8 @@ proc test(name: string) =
   if not dirExists "bin":
     mkDir "bin"
   --run
-  buildBase true, "bin/test_" & name, "tests/boost/test_" & name
+  let fName = name.splitPath[1]
+  buildBase true, joinPath("bin", fName), joinPath("tests/boost", name)
 
 task test, "Run all tests":
-  test "all"
+  test "test_all"
