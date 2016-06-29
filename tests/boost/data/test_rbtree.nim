@@ -29,3 +29,9 @@ suite "RBTree":
     (root, ok) = root.insert(2)
     require: ok == true
     check: root.value == 1
+    (root, ok) = root.insert(3)
+    require: ok == true
+    check: root.value == 2
+    for x in 4..10:
+      (root, ok) = root.insert(x)
+    echo root

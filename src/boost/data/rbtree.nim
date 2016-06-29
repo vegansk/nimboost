@@ -134,6 +134,10 @@ proc insert*[T](r: RBNode[T], v: T): (RBNode[T], bool) =
       curr = if curr.v > v: curr.l else: curr.r
     let n = newRBNode(v)
     n.p = parent
+    if n.v < n.p.v:
+      n.p.l = n
+    else:
+      n.p.r = n
     n.fixInsert
     if r.p.isNil:
       return (r, true)
@@ -144,4 +148,31 @@ proc delete*[T](n: RBNode[T], v: T): (RBNode[T], bool) = discard
 proc find*[T](n: RBNode[T], v: T): (RBNode[T], bool) = discard
 
 iterator items*[T](n: RBNode[T]): T = discard
-  
+
+proc mkTab(tab, s: int): string =
+  if tab == 0:
+    result = ""
+  else:
+    result = newString(tab + s)
+    for i in 0..<tab:
+      result[i] = ' '
+    result[tab] = '\\'
+    for i in (tab+1)..<(tab+s):
+      result[i] = '_'
+
+const TAB_STEP = 2
+    
+proc treeReprImpl[T](n: RBNode[T], tab: int): string =
+  result = mkTab(tab, TAB_STEP)
+  if n.isNil:
+    result.add("[NIL]\n")
+  else:
+    result.add("[" & $n.v & "]\n")
+    result.add(treeReprImpl(n.l, tab + TAB_STEP))
+    result.add(treeReprImpl(n.r, tab + TAB_STEP))
+    
+proc treeRepr*[T](n: RBNode[T]): string =
+  result = treeReprImpl(n, 0)
+  result.setLen(result.len - 1)
+
+proc `$`*[T](n: RBNode[T]): string = n.treeRepr
