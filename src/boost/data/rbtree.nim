@@ -48,7 +48,8 @@ proc sibling(n: RBNode): RBNode {.inline.} =
     n.parent.left
 
 proc rotateLeft(n: RBNode) {.inline.} =
-  assert(not n.r.isNil)
+  if n.r.isNil:
+    return
   let pivot = n.r
   pivot.p = n.p
   if not n.p.isNil:
@@ -63,7 +64,8 @@ proc rotateLeft(n: RBNode) {.inline.} =
   pivot.l = n
 
 proc rotateRight(n: RBNode) =
-  assert(not n.r.isNil)
+  if n.l.isNil:
+    return
   let pivot = n.l
   pivot.p = n.p
   if not n.p.isNil:
@@ -118,6 +120,8 @@ proc insertCase4(n: RBNode) =
 
 proc insertCase5(n: RBNode) =
   let g = n.grandParent
+  if g.isNil:
+    return
   n.p.c = BLACK
   g.c = RED
   if n == n.p.l and n.p == g.l:
@@ -231,7 +235,7 @@ proc insert*[T](r: RBNode[T], v: T): (RBNode[T], bool) =
   if r.isNil:
     let n = newRBNode(v)
     n.fixInsert
-    return (n, true)
+    result = (n, true)
   else:
     var curr = r
     var parent = r
@@ -248,9 +252,10 @@ proc insert*[T](r: RBNode[T], v: T): (RBNode[T], bool) =
       n.p.r = n
     n.fixInsert
     if r.p.isNil:
-      return (r, true)
+      result = (r, true)
     else:
-      return (r.p, true)
+      result = (r.p, true)
+  assert(result[0].c == BLACK)
 
 proc delete*[T](r: RBNode[T], v: T): (RBNode[T], bool) =
   var curr = r

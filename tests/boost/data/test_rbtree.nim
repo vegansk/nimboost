@@ -1,4 +1,4 @@
-import unittest, boost.data.rbtree
+import unittest, boost.data.rbtree, sets, random, sequtils, algorithm
 
 suite "RBTree":
   
@@ -33,3 +33,19 @@ suite "RBTree":
       echo i
     (root, ok) = root.delete(13)
     echo root
+
+  test "RBTree - stress test":
+    proc stressIter(cnt: int) =
+      var vals = initSet[int]()
+      for i in 1..cnt:
+        vals.incl(random(cnt * 2))
+      var (root, ok) = (RBNilNode[int](), true)
+      for v in vals:
+        (root, ok) = root.insert(v)
+      var valsS = sequtils.toSeq(vals.items)
+      sort(valsS, cmp)
+      var rootS = sequtils.toSeq(root.items)
+      check: valsS == rootS
+
+    for x in 1..10000:
+      stressIter(100)
