@@ -9,6 +9,10 @@ type
     s: string
 
 suite "Typeclasses":
+  test "Typeclasses - NonVoid":
+    check: void isnot NonVoid
+    check: int is NonVoid
+
   test "Typeclasses - Eq":
     check: int is Eq
     check: string is Eq

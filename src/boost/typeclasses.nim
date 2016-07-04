@@ -1,11 +1,13 @@
 ## Common typeclasses definitions
 
 type
+  NonVoid* = concept x
+    ## Non-void type
+    x isnot void == true
   Eq* = concept x, y
     ## Equality class
     (x == y) is bool
     # We can't use ``!=`` here because of issue https://github.com/nim-lang/Nim/issues/4020
-
   Ord* = concept x, y
     ## Ordered class
     x is Eq and y is Eq
