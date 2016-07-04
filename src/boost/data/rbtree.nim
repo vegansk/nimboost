@@ -14,23 +14,33 @@ type
       v: V
     c: RBNodeColor
     l, r, p: RBNode[K,V]
+  RBTree*[K,V] = ref RBTreeObj[K,V]
+  RBTreeObj[K,V] = object
+    root: RBNode[K,V]
+    length: int
 
-proc RBNil*[K,V]: RBNode[K,V] {.inline.} = nil
+proc newRBTree*[K,V]: RBTree[K,V] =
+  RBTree[K,V](root: nil, length: 0)
 
-proc newNode[K;V: NonVoid](k: K, v: V, c: RBNodeColor, l, r, p: RBNode[K,V]): RBNode[K,V] {.inline.} =
-  RBNode(k: k, v: v, c: c, l: l, r: r, p: p)
+proc len*(t: RBTree): auto = t.length
 
-proc key*(n: RBNode): auto {.inline.} =
+proc newNode[K;V: NonVoid](k: K, v: V, c: RBNodeColor, l, r, p: RBNode[K,V] = nil): RBNode[K,V] {.inline.} =
+  RBNode[K,V](k: k, v: v, c: c, l: l, r: r, p: p)
+
+proc newNode[K](k: K, c: RBNodeColor, l, r, p: RBNode[K,void] = nil): RBNode[K,void] {.inline.} =
+  RBNode[K,void](k: k, c: c, l: l, r: r, p: p)
+
+proc key(n: RBNode): auto {.inline.} =
   assert(not(n.isNil))
   n.k
 
-proc value*[K;V: NonVoid](n: RBNode[K,V]): V {.inline.} =
+proc value[K;V: NonVoid](n: RBNode[K,V]): V {.inline.} =
   assert(not(n.isNil))
   n.v
 
-proc left[K,V](n: RBNode[K,V]): auto {.inline.} = (if n.isNil: RBNil[K,V]() else: n.l)
-proc right[K,V](n: RBNode[K,V]): auto {.inline.} = (if n.isNil: RBNil[K,V]() else: n.r)
-proc parent[K,V](n: RBNode[K,V]): auto {.inline.} = (if n.isNil: RBNil[K,V]() else: n.p)
+proc left(n: RBNode): auto {.inline.} = (if n.isNil: nil else: n.l)
+proc right(n: RBNode): auto {.inline.} = (if n.isNil: nil else: n.r)
+proc parent(n: RBNode): auto {.inline.} = (if n.isNil: nil else: n.p)
 proc color(n: RBNode): auto {.inline.} = (if n.isNil: BLACK else: n.c)
 
 template iterateNode(n: RBNode, next: expr, op: stmt): stmt {.immediate.} =
@@ -55,13 +65,70 @@ template iterateNode(n: RBNode, next: expr, op: stmt): stmt {.immediate.} =
               break
             next = next.p
 
-iterator items*(n: RBNode): auto =
-  iterateNode(n, next):
+iterator items*(t: RBTree): auto =
+  iterateNode(t.root, next):
     yield next.k
 
-iterator pairs*[K;V: NonVoid](n: RBNode[K,V]): auto =
-  iterateNode(n, next):
+iterator keys*(t: RBTree): auto =
+  iterateNode(t.root, next):
+    yield next.k
+
+iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): auto =
+  iterateNode(t.root, next):
     yield (next.k, next.v)
+
+iterator mpairs*[K;V: NonVoid](t: var RBTree[K,V]): (K, var V) =
+  iterateNode(t.root, next):
+    yield (next.k, next.v)
+
+iterator values*(t: RBTree): auto =
+  iterateNode(t.root, next):
+    yield next.v
+
+iterator mvalues*[K,V](t: var RBTree[K,V]): var V =
+  iterateNode(t.root, next):
+    yield next.v
+
+####################################################################################################
+# Implementation based on http://www.geeksforgeeks.org/red-black-tree-set-1-introduction-2/
+
+proc bstInsert(root, pt: var RBNode): (RBNode, bool) =
+  if root.isNil:
+    return (pt, true)
+  var curr = root
+  var prev: type(curr)
+  while not(curr.isNil):
+    prev = curr
+    if pt.k < curr.k:
+      curr = curr.l
+    elif pt.k > curr.k:
+      curr = curr.r
+    else:
+      # Equal keys
+      when declared(pt.v):
+        curr.v = pt.v
+        pt = curr
+        return (root, false)
+  if pt.k < prev.k:
+    prev.l = pt
+  else:
+    prev.r = pt
+  pt.p = prev
+  return (root, true)
+
+proc fixViolation(root, pt: var RBNode) = discard
+
+proc add*[K;V: NonVoid](t: var RBTree[K,V], k: K, v: V): var RBTree[K,V] {.discardable.} =
+  var pt = newNode(k, v, BLACK)
+  var (newRoot, ok) = bstInsert(t.root, pt)
+  t.root = newRoot
+  if ok:
+    inc t.length
+    fixViolation(t.root, pt)
+  result = t
+  
+####################################################################################################
+# Pretty print
 
 proc mkTab(tab, s: int): string =
   if tab == 0:
@@ -89,9 +156,9 @@ proc treeReprImpl[K,V](n: RBNode[K,V], tab: int): string =
     result.add(treeReprImpl(n.l, tab + TAB_STEP))
     result.add(treeReprImpl(n.r, tab + TAB_STEP))
     
-proc treeRepr*(n: RBNode): string =
-  result = treeReprImpl(n, 0)
+proc treeRepr*(t: RBTree): string =
+  result = treeReprImpl(t.root, 0)
   result.setLen(result.len - 1)
 
-proc `$`*(n: RBNode): string = n.treeRepr
+proc `$`*(n: RBTree): string = n.treeRepr
   

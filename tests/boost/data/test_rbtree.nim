@@ -3,15 +3,24 @@ import unittest, boost.data.rbtree, sets, random, sequtils, algorithm
 suite "RBTree":
   
   test "RBTree - initialization":
-    let nn = RBNIl[int,void]()
-    check: nn.isNil
-    expect Exception:
-      discard nn.key
+    let t = newRBTree[int, void]()
+    check: t.len == 0 
+    # Value's type is void
+    check: not compiles(toSeq(t.values()))
+    # But we have keys always
+    check: compiles(toSeq(t.keys()))
     var x = 0
-    for k in nn:
+    for k in t:
       inc x
     check: x == 0
 
+  test "RBTree - insert":
+    var t = newRBTree[int, string]()
+    for i in 1..100:
+      t.add(i, $i)
+    check: t.len == 100
+    check: toSeq(t.keys()) == toSeq(1..100)
+    check: toSeq(t.values()) == toSeq(1..100).mapIt($it)
   # test "RBTree - insert":
   #   var (root, ok) = RBNilNode[int]().insert(1)
   #   require: ok == true
