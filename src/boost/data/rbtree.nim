@@ -30,19 +30,6 @@ proc newNode[K;V: NonVoid](k: K, v: V, c: RBNodeColor, l, r, p: RBNode[K,V] = ni
 proc newNode[K](k: K, c: RBNodeColor, l, r, p: RBNode[K,void] = nil): RBNode[K,void] {.inline.} =
   RBNode[K,void](k: k, c: c, l: l, r: r, p: p)
 
-proc key(n: RBNode): auto {.inline.} =
-  assert(not(n.isNil))
-  n.k
-
-proc value[K;V: NonVoid](n: RBNode[K,V]): V {.inline.} =
-  assert(not(n.isNil))
-  n.v
-
-proc left(n: RBNode): auto {.inline.} = (if n.isNil: nil else: n.l)
-proc right(n: RBNode): auto {.inline.} = (if n.isNil: nil else: n.r)
-proc parent(n: RBNode): auto {.inline.} = (if n.isNil: nil else: n.p)
-proc color(n: RBNode): auto {.inline.} = (if n.isNil: BLACK else: n.c)
-
 template iterateNode(n: RBNode, next: expr, op: stmt): stmt {.immediate.} =
   if not n.isNil:
     var next = n
@@ -193,6 +180,46 @@ proc add*[K;V: NonVoid](t: var RBTree[K,V], k: K, v: V): var RBTree[K,V] {.disca
     inc t.length
     fixViolation(t.root, pt)
   result = t
+
+proc findKey[K,V](n: RBNode[K,V], k: K): RBNode[K,V] =
+  var curr = n
+  while not(curr.isNil):
+    if k == curr.k:
+      return curr
+    elif k < curr.k:
+      curr = curr.l
+    else:
+      curr = curr.r
+  return nil
+
+proc findMin[K,V](n: RBNode[K,V]): RBNode[K,V] =
+  if n.isNil:
+    return nil
+  var curr = n
+  while not(curr.l.isNil):
+    curr = curr.l
+  return curr
+
+proc findMax[K,V](n: RBNode[K,V]): RBNode[K,V] =
+  if n.isNil:
+    return nil
+  var curr = n
+  while not(curr.r.isNil):
+    curr = curr.r
+  return curr
+
+proc hasKey*[K,V](t: RBTree[K,V], k: K): bool =
+  t.root.findKey(k) != nil
+
+proc min*[K,V](t: RBTree[K,V]): K =
+  let n = t.root.findMin()
+  assert n != nil
+  n.k
+  
+proc max*[K,V](t: RBTree[K,V]): K =
+  let n = t.root.findMax()
+  assert n != nil
+  n.k
   
 ####################################################################################################
 # Pretty print

@@ -23,7 +23,10 @@ suite "RBTree":
     check: t.len == 100
     check: toSeq(t.keys()) == toSeq(1..100)
     check: toSeq(t.values()) == toSeq(1..100).mapIt($it)
-    echo t
+    for i in 1..100:
+      check: t.hasKey(i)
+    check: t.min == 1
+    check: t.max == 100
   # test "RBTree - insert":
   #   var (root, ok) = RBNilNode[int]().insert(1)
   #   require: ok == true
