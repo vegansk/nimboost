@@ -105,10 +105,10 @@ proc bstInsert(root, pt: var RBNode): (RBNode, bool) =
       curr = curr.r
     else:
       # Equal keys
-      when declared(pt.v):
+      when compiles(pt.v):
         curr.v = pt.v
         pt = curr
-        return (root, false)
+      return (root, false)
   if pt.k < prev.k:
     prev.l = pt
   else:
@@ -116,10 +116,77 @@ proc bstInsert(root, pt: var RBNode): (RBNode, bool) =
   pt.p = prev
   return (root, true)
 
-proc fixViolation(root, pt: var RBNode) = discard
+proc rotateLeft(root, pt: var RBNode) =
+  var r = pt.r
+  pt.r = r.l
+  if not pt.r.isNil:
+    pt.r.p = pt
+  r.p = pt.p
+  if pt.p.isNil:
+    root = r
+  elif pt == pt.p.l:
+    pt.p.l = r
+  else:
+    pt.p.r = r
+  r.l = pt
+  pt.p = r
+
+proc rotateRight(root, pt: var RBNode) =
+  var l = pt.l
+  pt.l = l.r
+  if not pt.l.isNil:
+    pt.l.p = pt
+  l.p = pt.p
+  if pt.p.isNil:
+    root = l
+  elif pt == pt.p.l:
+    pt.p.l = l
+  else:
+    pt.p.r = l
+  l.r = pt
+  pt.p = l
+
+proc fixViolation(root, pt: var RBNode) =
+  var ppt: type(pt)
+  var gppt: type(pt)
+
+  while pt != root and pt.c != BLACK and pt.p.c == RED:
+    ppt = pt.p
+    gppt = ppt.p
+    if ppt == gppt.l:
+      var upt = gppt.r
+      if not(upt.isNil) and upt.c == RED:
+        gppt.c = RED
+        ppt.c = BLACK
+        upt.c = BLACK
+        pt = gppt
+      else:
+        if pt == ppt.r:
+          rotateLeft(root, ppt)
+          pt = ppt
+          ppt = pt.p
+        rotateRight(root, gppt)
+        swap(ppt.c, gppt.c)
+        pt = ppt
+    else:
+      var upt = gppt.l
+      if not(upt.isNil) and upt.c == RED:
+        gppt.c = RED
+        ppt.c = BLACK
+        upt.c = BLACK
+        pt = gppt
+      else:
+        if pt == ppt.l:
+          rotateRight(root, ppt)
+          pt = ppt
+          ppt = pt.p
+        rotateLeft(root, gppt)
+        swap(ppt.c, gppt.c)
+        pt = ppt
+  root.c = BLACK
 
 proc add*[K;V: NonVoid](t: var RBTree[K,V], k: K, v: V): var RBTree[K,V] {.discardable.} =
-  var pt = newNode(k, v, BLACK)
+  var pt = newNode(k, v, RED)
   var (newRoot, ok) = bstInsert(t.root, pt)
   t.root = newRoot
   if ok:

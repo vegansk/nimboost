@@ -18,9 +18,12 @@ suite "RBTree":
     var t = newRBTree[int, string]()
     for i in 1..100:
       t.add(i, $i)
+    for i in 1..100:
+      t.add(i, $i)
     check: t.len == 100
     check: toSeq(t.keys()) == toSeq(1..100)
     check: toSeq(t.values()) == toSeq(1..100).mapIt($it)
+    echo t
   # test "RBTree - insert":
   #   var (root, ok) = RBNilNode[int]().insert(1)
   #   require: ok == true
