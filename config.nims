@@ -17,7 +17,6 @@ proc buildBase(debug: bool, bin: string, src: string) =
     --define: release
     --opt: size
   else:
-    # --reportConceptFailures:on
     --define: debug
     --debuginfo
     --debugger: native

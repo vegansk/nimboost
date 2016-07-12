@@ -5,22 +5,40 @@ import boost.typeclasses
 ####################################################################################################
 # Type
 
-type
-  RBNodeColor = enum BLACK, RED
-  RBNode*[K,V] = ref RBNodeObj[K,V]
-  RBNodeObj[K,V] = object 
-    k: K
-    when not(V is void):
-      v: V
-    c: RBNodeColor
-    l, r, p: RBNode[K,V]
-  RBTree*[K,V] = ref RBTreeObj[K,V]
-  RBTreeObj[K,V] = object
-    root: RBNode[K,V]
-    length: int
+when defined(debug):
+  type
+    RBNodeColor* = enum BLACK, RED
+    RBNode*[K,V] = ref RBNodeObj[K,V]
+    RBNodeObj*[K,V] = object 
+      k*: K
+      when not(V is void):
+        v*: V
+        c*: RBNodeColor
+        l*, r*, p*: RBNode[K,V]
+    RBTree*[K,V] = ref RBTreeObj[K,V]
+    RBTreeObj*[K,V] = object
+      root*: RBNode[K,V]
+      length*: int
+else:
+  type
+    RBNodeColor = enum BLACK, RED
+    RBNode[K,V] = ref RBNodeObj[K,V]
+    RBNodeObj[K,V] = object 
+      k: K
+      when not(V is void):
+        v: V
+        c: RBNodeColor
+        l, r, p: RBNode[K,V]
+    RBTree*[K,V] = ref RBTreeObj[K,V]
+    RBTreeObj[K,V] = object
+      root: RBNode[K,V]
+      length: int
 
 proc newRBTree*[K,V]: RBTree[K,V] =
   RBTree[K,V](root: nil, length: 0)
+
+proc newRBTree*[K]: RBTree[K,void] =
+  RBTree[K,void](root: nil, length: 0)
 
 proc len*(t: RBTree): auto = t.length
 
@@ -79,7 +97,46 @@ iterator mvalues*[K,V](t: var RBTree[K,V]): var V =
 ####################################################################################################
 # Implementation based on http://www.geeksforgeeks.org/red-black-tree-set-1-introduction-2/
 
-proc bstInsert(root, pt: var RBNode): (RBNode, bool) =
+proc isLeftChild(n: RBNode): bool {.inline.} =
+  not(n.p.isNil) and n.p.l == n
+
+proc isRightChild(n: RBNode): bool {.inline.} =
+  not(n.p.isNil) and n.p.r == n
+
+proc clean(n: RBNode): RBNode {.inline, discardable.} =
+  if not(n.isNil):
+    n.l = nil
+    n.r = nil
+    n.p = nil
+  n
+
+proc replace(`from`: RBNode, to: RBNode): RBNode {.inline, discardable.} =
+  if `from`.isLeftChild:
+    `from`.p.l = to
+  elif `from`.isRightChild:
+    `from`.p.r = to
+  if not(to.isNil):
+    if to.isLeftChild:
+      to.p.l = nil
+    elif to.isRightChild:
+      to.p.r = nil
+    to.l = `from`.l
+    to.r = `from`.r
+    to.p = `from`.p
+  if not(`from`.l.isNil):
+    `from`.l.p = `to`
+  if not(`from`.r.isNil):
+    `from`.r.p = `to`
+  `from`.clean
+  return `from`
+
+proc cleanParent(n: var RBNode): RBNode {.inline.} =
+  if not(n.isNil):
+    n.p = nil
+  n
+
+proc bstInsert(root, pt: var RBNode): tuple[root: RBNode, inserted: bool] =
+  ## Returns new root and the flag: true for insert, false for update
   if root.isNil:
     return (pt, true)
   var curr = root
@@ -111,7 +168,7 @@ proc rotateLeft(root, pt: var RBNode) =
   r.p = pt.p
   if pt.p.isNil:
     root = r
-  elif pt == pt.p.l:
+  elif pt.isLeftChild:
     pt.p.l = r
   else:
     pt.p.r = r
@@ -126,7 +183,7 @@ proc rotateRight(root, pt: var RBNode) =
   l.p = pt.p
   if pt.p.isNil:
     root = l
-  elif pt == pt.p.l:
+  elif pt.isLeftChild:
     pt.p.l = l
   else:
     pt.p.r = l
@@ -181,7 +238,16 @@ proc add*[K;V: NonVoid](t: var RBTree[K,V], k: K, v: V): var RBTree[K,V] {.disca
     fixViolation(t.root, pt)
   result = t
 
-proc findKey[K,V](n: RBNode[K,V], k: K): RBNode[K,V] =
+proc add*[K](t: var RBTree[K,void], k: K): var RBTree[K,void] {.discardable.} =
+  var pt = newNode(k, RED)
+  var (newRoot, ok) = bstInsert(t.root, pt)
+  t.root = newRoot
+  if ok:
+    inc t.length
+    fixViolation(t.root, pt)
+  result = t
+
+proc findKey[K,V](n: RBNode[K,V], k: K): RBNode[K,V] {.inline.} =
   var curr = n
   while not(curr.isNil):
     if k == curr.k:
@@ -192,7 +258,7 @@ proc findKey[K,V](n: RBNode[K,V], k: K): RBNode[K,V] =
       curr = curr.r
   return nil
 
-proc findMin[K,V](n: RBNode[K,V]): RBNode[K,V] =
+proc findMin[K,V](n: RBNode[K,V]): RBNode[K,V] {.inline.} =
   if n.isNil:
     return nil
   var curr = n
@@ -200,7 +266,7 @@ proc findMin[K,V](n: RBNode[K,V]): RBNode[K,V] =
     curr = curr.l
   return curr
 
-proc findMax[K,V](n: RBNode[K,V]): RBNode[K,V] =
+proc findMax[K,V](n: RBNode[K,V]): RBNode[K,V] {.inline.} =
   if n.isNil:
     return nil
   var curr = n
@@ -211,6 +277,11 @@ proc findMax[K,V](n: RBNode[K,V]): RBNode[K,V] =
 proc hasKey*[K,V](t: RBTree[K,V], k: K): bool =
   t.root.findKey(k) != nil
 
+proc getOrDefault*[K,V: NonVoid](t: RBTree[K,V], k: K): V =
+  let n = t.root.findKey(k)
+  if not n.isNil:
+    result = n.v
+
 proc min*[K,V](t: RBTree[K,V]): K =
   let n = t.root.findMin()
   assert n != nil
@@ -220,7 +291,37 @@ proc max*[K,V](t: RBTree[K,V]): K =
   let n = t.root.findMax()
   assert n != nil
   n.k
-  
+
+proc bstDeleteImpl(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] {.inline.} = 
+  assert(not pt.isNil)
+
+  let haveLeft = not(pt.l.isNil)
+  let haveRight = not(pt.r.isNil)
+  let isRoot = pt == root
+
+  if not(haveLeft) and not(haveRight):
+    if isRoot:
+      return (nil, root)
+    else:
+      return (root, pt.replace(nil))
+  elif not(haveLeft) or not(haveRight):
+    var n = if haveLeft: pt.l else: pt.r
+    if isRoot:
+      return (n.cleanParent, root)
+    else:
+      return (root, pt.replace(n))
+  else:
+    var n = pt.r.findMin
+    if isRoot:
+      return (n, pt.replace(n))
+    else:
+      return (root, pt.replace(n))
+
+when defined(debug):
+  proc bstDelete*(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] = bstDeleteImpl(root, pt)
+else:
+  proc bstDelete(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] = bstDeleteImpl(root, pt)
+
 ####################################################################################################
 # Pretty print
 
