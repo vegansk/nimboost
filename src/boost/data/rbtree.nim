@@ -70,7 +70,7 @@ template iterateNode(n: RBNode, next: expr, op: stmt): stmt {.immediate.} =
               break
             next = next.p
 
-iterator items*(t: RBTree): auto =
+iterator items*[K,V](t: RBTree[K,V]): K {.closure.} =
   iterateNode(t.root, next):
     yield next.k
 
@@ -78,7 +78,7 @@ iterator keys*(t: RBTree): auto =
   iterateNode(t.root, next):
     yield next.k
 
-iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): auto =
+iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): (K,V) {.closure.} =
   iterateNode(t.root, next):
     yield (next.k, next.v)
 
@@ -116,6 +116,7 @@ proc replace(`from`: RBNode, to: RBNode): RBNode {.inline, discardable.} =
   elif `from`.isRightChild:
     `from`.p.r = to
   if not(to.isNil):
+    to.c = `from`.c
     if to.isLeftChild:
       to.p.l = nil
     elif to.isRightChild:
@@ -317,10 +318,51 @@ proc bstDeleteImpl(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] {
     else:
       return (root, pt.replace(n))
 
+proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
+  var i1 = (iterator(t: RBTree[K,V]): (K,V))rbtree.pairs
+  var i2 = (iterator(t: RBTree[K,V]): (K,V))rbtree.pairs
+  result = true
+  while true:
+    var r1 = i1(l)
+    var r2 = i2(r)
+    let f1 = i1.finished
+    let f2 = i2.finished
+    if f1 and f2:
+      break
+    elif f1 != f2:
+      return false
+    if r1[0] != r2[0] or r1[1] != r2[1]:
+      return false
+
+proc `==`*[K](l, r: RBTree[K,void]): bool =
+  var i1 = (iterator(t: RBTree[K,void]): K)rbtree.items
+  var i2 = (iterator(t: RBTree[K,void]): K)rbtree.items
+  result = true
+  while true:
+    let r1 = i1(l)
+    let r2 = i2(r)
+    let f1 = i1.finished
+    let f2 = i2.finished
+    if f1 and f2:
+      break
+    elif f1 != f2:
+      return false
+    if r1 != r2:
+      return false
+
 when defined(debug):
   proc bstDelete*(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] = bstDeleteImpl(root, pt)
 else:
   proc bstDelete(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] = bstDeleteImpl(root, pt)
+
+proc del*[K](t: var RBTree[K,void], k: K): var RBTree[K,void] {.discardable.} =
+  result = t
+  var n = t.root.findKey(k)
+  if n.isNil:
+    return
+  let res = bstDelete(t.root, n)
+  t.root = res[0]
+  dec t.length
 
 ####################################################################################################
 # Pretty print

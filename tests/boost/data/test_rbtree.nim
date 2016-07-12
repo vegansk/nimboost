@@ -3,7 +3,7 @@ import unittest, boost.data.rbtree, sets, random, sequtils, algorithm
 suite "RBTree":
   
   test "RBTree - initialization":
-    let t = newRBTree[int, void]()
+    let t = newRBTree[int]()
     check: t.len == 0 
     # Value's type is void
     check: not compiles(toSeq(t.values()))
@@ -16,11 +16,7 @@ suite "RBTree":
 
   test "RBTree - insert (internal)":
     var t = newRBTree[int]()
-    t.add(1)
-    t.add(2)
-    t.add(3)
-    t.add(4)
-    t.add(5)
+    t.add(1).add(2).add(3).add(4).add(5)
 
     check: t.root.k == 2
     check: t.root.l.k == 1
@@ -30,9 +26,7 @@ suite "RBTree":
     check: t.root.r.l.l.isNil and t.root.r.l.r.isNil
     check: t.root.r.r.k == 5
 
-    t.add(6)
-    t.add(7)
-    t.add(8)
+    t.add(6).add(7).add(8)
 
     check: t.root.k == 4
     check: t.root.l.k == 2
@@ -52,13 +46,20 @@ suite "RBTree":
     check: t.min == 1
     check: t.max == 100
 
+  test "RBTree - equality":
+    var t1 = newRBTree[int, string]()
+    var t2 = newRBTree[int, string]()
+    check: t1.add(1, "a").add(2, "b").add(3, "c") == t2.add(3, "c").add(2, "b").add(1, "a")
+    check: t1 != t2.add(4, "d")
+
+    var t3 = newRBTree[int]()
+    var t4 = newRBTree[int]()
+    check: t3.add(1).add(2).add(3) == t4.add(3).add(1).add(2)
+    check: t3 != t4.add(4)
+
   test "RBTree - delete (internal)":
     var t = newRBTree[int]()
-    t.add(1)
-    t.add(2)
-    t.add(3)
-    t.add(4)
-    t.add(5)
+    t.add(1).add(2).add(3).add(4).add(5)
 
     var res = t.root.bstDelete(t.root)
     check: res.root.k == 3
@@ -68,3 +69,12 @@ suite "RBTree":
     check: res.root.l.isNil
     res = res.root.bstDelete(res.root.r)
     check: res.root.r.k == 5
+
+  test "RBTree - delete":
+    var t1 = newRBTree[int]()
+    var t2 = newRBTree[int]()
+    t1.add(1).add(2).add(3).add(4).add(5)
+    t2.add(1).add(2).add(3).add(4)
+    check: t1.del(5) == t2
+    check: t1.len == 4
+    
