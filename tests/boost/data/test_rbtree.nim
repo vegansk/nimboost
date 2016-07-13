@@ -47,19 +47,18 @@ suite "RBTree":
     check: t.max == 100
 
   test "RBTree - equality":
-    var t1 = newRBTree[int, string]()
-    var t2 = newRBTree[int, string]()
-    check: t1.add(1, "a").add(2, "b").add(3, "c") == t2.add(3, "c").add(2, "b").add(1, "a")
+    var t1 = newRBTree[int, string]().add(1, "a").add(2, "b").add(3, "c")
+    var t2 = newRBTree[int, string]().add(3, "c").add(2, "b").add(1, "a")
+    check: t1 == t2
     check: t1 != t2.add(4, "d")
 
-    var t3 = newRBTree[int]()
-    var t4 = newRBTree[int]()
-    check: t3.add(1).add(2).add(3) == t4.add(3).add(1).add(2)
+    var t3 = newRBTree[int]().add(1).add(2).add(3)
+    var t4 = newRBTree[int]().add(3).add(1).add(2)
+    check: t3 == t4
     check: t3 != t4.add(4)
 
   test "RBTree - delete (internal)":
-    var t = newRBTree[int]()
-    t.add(1).add(2).add(3).add(4).add(5)
+    var t = newRBTree[int]().add(1).add(2).add(3).add(4).add(5)
 
     var res = t.root.bstDelete(t.root)
     check: res.root.k == 3
@@ -71,31 +70,34 @@ suite "RBTree":
     check: res.root.r.k == 5
 
   test "RBTree - delete":
-    var t1 = newRBTree[int]()
-    var t2 = newRBTree[int]()
-    t1.add(1).add(2).add(3).add(4).add(5)
-    t2.add(1).add(2).add(3).add(4)
-    t1.del(5)
-    check: t1 == t2
+    var t1 = newRBTree[int]().add(1).add(2).add(3).add(4).add(5)
+    var t2 = newRBTree[int]().add(1).add(2).add(3).add(4)
+    check: t1.del(5) == t2
     check: t1.len == 4
-    t1.del(1)
-    check: t1.len == 3
-    t1.del(3)
-    check: t1.len == 2
-    t1.del(2)
-    check: t1.len == 1
+    check: t1.del(1).len == 3
+    check: t1.del(3).len == 2
+    check: t1.del(2).len == 1
     t1.del(4)
-    check: t1.len == 0
+    check: t1.del(4).len == 0
+
+  proc shuffle[T](xs: var openarray[T]) =
+    for i in countup(1, xs.len - 1):
+      let j = random(succ i)
+      swap(xs[i], xs[j])
     
   test "RBTree - stress":
     randomize(1234)
     var t = newRBTree[int]()
-    const SIZE = 100000
-    for i in 1..SIZE:
+    const SIZE = 100_000
+    var indices = newSeq[int](SIZE)
+    for i in 0..<SIZE:
       t.add(i)
-      check: t.len == i
-    for i in 1..SIZE:
+      indices[i] = i
+      check: t.len == i + 1
+    indices.shuffle
+    for j in 0..<SIZE:
+      let i = indices[j]
       check: t.hasKey(i) == true
       t.del(i)
       check: t.hasKey(i) == false
-      check: t.len == SIZE - i
+      check: t.len == SIZE - j - 1

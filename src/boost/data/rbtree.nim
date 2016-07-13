@@ -34,13 +34,13 @@ else:
       root: RBNode[K,V]
       length: int
 
-proc newRBTree*[K,V]: RBTree[K,V] =
+proc newRBTree*[K,V]: RBTree[K,V] {.inline.} =
   RBTree[K,V](root: nil, length: 0)
 
-proc newRBTree*[K]: RBTree[K,void] =
+proc newRBTree*[K]: RBTree[K,void] {.inline} =
   RBTree[K,void](root: nil, length: 0)
 
-proc len*(t: RBTree): auto = t.length
+proc len*(t: RBTree): auto {.inline.} = t.length
 
 proc newNode[K;V: NonVoid](k: K, v: V, c: RBNodeColor, l, r, p: RBNode[K,V] = nil): RBNode[K,V] {.inline.} =
   RBNode[K,V](k: k, v: v, c: c, l: l, r: r, p: p)
@@ -48,14 +48,13 @@ proc newNode[K;V: NonVoid](k: K, v: V, c: RBNodeColor, l, r, p: RBNode[K,V] = ni
 proc newNode[K](k: K, c: RBNodeColor, l, r, p: RBNode[K,void] = nil): RBNode[K,void] {.inline.} =
   RBNode[K,void](k: k, c: c, l: l, r: r, p: p)
 
-template iterateNode(n: RBNode, next: expr, op: stmt): stmt {.immediate.} =
+template iterateNode(n: RBNode, next: untyped, op: untyped): untyped =
   if not n.isNil:
     var next = n
     while not next.l.isNil:
       next = next.l
     block loop:
       while true:
-        # yield next.k
         `op`
         if not next.r.isNil:
           next = next.r
@@ -70,7 +69,11 @@ template iterateNode(n: RBNode, next: expr, op: stmt): stmt {.immediate.} =
               break
             next = next.p
 
-iterator items*[K,V](t: RBTree[K,V]): K {.closure.} =
+iterator itemsC[K,V](t: RBTree[K,V]): K {.closure.} =
+  iterateNode(t.root, next):
+    yield next.k
+
+iterator items*[K,V](t: RBTree[K,V]): K =
   iterateNode(t.root, next):
     yield next.k
 
@@ -78,7 +81,11 @@ iterator keys*(t: RBTree): auto =
   iterateNode(t.root, next):
     yield next.k
 
-iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): (K,V) {.closure.} =
+iterator pairsC[K;V: NonVoid](t: RBTree[K,V]): (K,V) {.closure.} =
+  iterateNode(t.root, next):
+    yield (next.k, next.v)
+
+iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): (K,V) =
   iterateNode(t.root, next):
     yield (next.k, next.v)
 
@@ -176,7 +183,7 @@ proc bstInsert(root, pt: var RBNode): tuple[root: RBNode, inserted: bool] =
   pt.p = prev
   return (root, true)
 
-proc rotateLeft(root: var RBNode, pt: RBNode) =
+proc rotateLeft(root: var RBNode, pt: RBNode) {.inline.} =
   var r = pt.r
   pt.r = r.l
   if not pt.r.isNil:
@@ -191,7 +198,7 @@ proc rotateLeft(root: var RBNode, pt: RBNode) =
   r.l = pt
   pt.p = r
 
-proc rotateRight(root: var RBNode, pt: RBNode) =
+proc rotateRight(root: var RBNode, pt: RBNode) {.inline.} =
   var l = pt.l
   pt.l = l.r
   if not pt.l.isNil:
@@ -245,7 +252,7 @@ proc fixInsert(root, pt: var RBNode) =
         pt = ppt
   root.c = BLACK
 
-proc add*[K;V: NonVoid](t: var RBTree[K,V], k: K, v: V): var RBTree[K,V] {.discardable.} =
+proc add*[K;V: NonVoid](t: RBTree[K,V], k: K, v: V): RBTree[K,V] {.discardable.} =
   var pt = newNode(k, v, RED)
   var (newRoot, ok) = bstInsert(t.root, pt)
   t.root = newRoot
@@ -254,7 +261,7 @@ proc add*[K;V: NonVoid](t: var RBTree[K,V], k: K, v: V): var RBTree[K,V] {.disca
     fixInsert(t.root, pt)
   result = t
 
-proc add*[K](t: var RBTree[K,void], k: K): var RBTree[K,void] {.discardable.} =
+proc add*[K](t: RBTree[K,void], k: K): RBTree[K,void] {.discardable.} =
   var pt = newNode(k, RED)
   var (newRoot, ok) = bstInsert(t.root, pt)
   t.root = newRoot
@@ -309,8 +316,8 @@ proc max*[K,V](t: RBTree[K,V]): K =
   n.k
 
 proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
-  var i1 = (iterator(t: RBTree[K,V]): (K,V))rbtree.pairs
-  var i2 = (iterator(t: RBTree[K,V]): (K,V))rbtree.pairs
+  var i1 = (iterator(t: RBTree[K,V]): (K,V))pairsC
+  var i2 = (iterator(t: RBTree[K,V]): (K,V))pairsC
   result = true
   while true:
     var r1 = i1(l)
@@ -325,8 +332,8 @@ proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
       return false
 
 proc `==`*[K](l, r: RBTree[K,void]): bool =
-  var i1 = (iterator(t: RBTree[K,void]): K)rbtree.items
-  var i2 = (iterator(t: RBTree[K,void]): K)rbtree.items
+  var i1 = (iterator(t: RBTree[K,void]): K)rbtree.itemsC
+  var i2 = (iterator(t: RBTree[K,void]): K)rbtree.itemsC
   result = true
   while true:
     let r1 = i1(l)
@@ -443,19 +450,6 @@ proc fixDelete(root: var RBNode, n: RBNode) {.inline.} =
 
   setColor(x, BLACK)
 
-# proc del*[K,V](t: var RBTree[K,V], k: K): var RBTree[K,V] {.discardable.} =
-#   result = t
-#   var n = t.root.findKey(k)
-#   if n.isNil:
-#     echo "SHIT!"
-#     return
-#   var res = bstDelete(t.root, n)
-#   t.root = res[0]
-#   dec t.length
-#   if res[1].isNil:
-#     return
-#   fixDelete(t.root, res[1])
-
 proc removeNode[K,V](root: var RBNode[K,V], n: RBNode[K,V]) =
   var p = n
   if not p.l.isNil and not p.r.isNil:
@@ -488,53 +482,13 @@ proc removeNode[K,V](root: var RBNode[K,V], n: RBNode[K,V]) =
         p.p.r = nil
       p.p = nil
           
-proc del*[K,V](t: var RBTree[K,V], k: K): var RBTree[K,V] {.discardable.} =
+proc del*[K,V](t: RBTree[K,V], k: K): RBTree[K,V] {.discardable.} =
   result = t
   var n = t.root.findKey(k)
   if n.isNil:
     return
   removeNode(t.root, n)
   dec t.length
-
-# proc del*[K,V](t: var RBTree[K,V], k: K): var RBTree[K,V] {.discardable.} =
-#   result = t
-#   var n = t.root.findKey(k)
-#   if n.isNil:
-#     return
-#   dec t.length
-#   if not(n.left.isNil) and not(n.right).isNil:
-#     var s = n.succ
-#     n.k = s.k
-#     when V isnot void:
-#       n.v = s.v
-#       n = s
-
-#   var repl = if not(n.left.isNil): n.left else: n.right
-#   if not(repl.isNil):
-#     repl.p = n.p
-#     if n.p.isNil:
-#       t.root = repl
-#     elif n.isLeftChild:
-#       n.p.l = repl
-#     else:
-#       n.p.r = repl
-
-#     n.l = nil
-#     n.r = nil
-#     n.p = nil
-#     if n.color == BLACK:
-#       fixDelete(t.root, repl)
-#   elif n.p.isNil:
-#     t.root = nil
-#   else:
-#     if n.c == BLACK:
-#       fixDelete(t.root, n)
-#     if not(n.p.isNil):
-#       if n.isLeftChild:
-#         n.p.l = nil
-#       elif n.isRightChild:
-#         n.p.r = nil
-#       n.p = nil
         
 ####################################################################################################
 # Pretty print
