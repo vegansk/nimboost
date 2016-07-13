@@ -98,10 +98,10 @@ iterator mvalues*[K,V](t: var RBTree[K,V]): var V =
 # Implementation based on http://www.geeksforgeeks.org/red-black-tree-set-1-introduction-2/
 
 proc isLeftChild(n: RBNode): bool {.inline.} =
-  not(n.p.isNil) and n.p.l == n
+  not(n.isNil) and not(n.p.isNil) and n.p.l == n
 
 proc isRightChild(n: RBNode): bool {.inline.} =
-  not(n.p.isNil) and n.p.r == n
+  not(n.isNil) and not(n.p.isNil) and n.p.r == n
 
 proc clean(n: RBNode): RBNode {.inline, discardable.} =
   if not(n.isNil):
@@ -128,13 +128,28 @@ proc replace(`from`: RBNode, to: RBNode): RBNode {.inline, discardable.} =
     `from`.l.p = `to`
   if not(`from`.r.isNil):
     `from`.r.p = `to`
-  `from`.clean
   return `from`
 
 proc cleanParent(n: var RBNode): RBNode {.inline.} =
   if not(n.isNil):
     n.p = nil
   n
+
+proc color(n: RBNode): RBNodeColor {.inline.} =
+  if n.isNil: BLACK else: n.c
+
+proc setColor(n: RBNode, c: RBNodeColor) {.inline.} =
+  if not(n.isNil):
+    n.c = c
+
+proc parent(n: RBNode): RBNode {.inline.} =
+  if n.isNil: nil else: n.p
+
+proc left(n: RBNode): RBNode {.inline.} =
+  if n.isNil: nil else: n.l
+
+proc right(n: RBNode): RBNode {.inline.} =
+  if n.isNil: nil else: n.r
 
 proc bstInsert(root, pt: var RBNode): tuple[root: RBNode, inserted: bool] =
   ## Returns new root and the flag: true for insert, false for update
@@ -161,7 +176,7 @@ proc bstInsert(root, pt: var RBNode): tuple[root: RBNode, inserted: bool] =
   pt.p = prev
   return (root, true)
 
-proc rotateLeft(root, pt: var RBNode) =
+proc rotateLeft(root: var RBNode, pt: RBNode) =
   var r = pt.r
   pt.r = r.l
   if not pt.r.isNil:
@@ -176,7 +191,7 @@ proc rotateLeft(root, pt: var RBNode) =
   r.l = pt
   pt.p = r
 
-proc rotateRight(root, pt: var RBNode) =
+proc rotateRight(root: var RBNode, pt: RBNode) =
   var l = pt.l
   pt.l = l.r
   if not pt.l.isNil:
@@ -191,7 +206,7 @@ proc rotateRight(root, pt: var RBNode) =
   l.r = pt
   pt.p = l
 
-proc fixViolation(root, pt: var RBNode) =
+proc fixInsert(root, pt: var RBNode) =
   var ppt: type(pt)
   var gppt: type(pt)
 
@@ -236,7 +251,7 @@ proc add*[K;V: NonVoid](t: var RBTree[K,V], k: K, v: V): var RBTree[K,V] {.disca
   t.root = newRoot
   if ok:
     inc t.length
-    fixViolation(t.root, pt)
+    fixInsert(t.root, pt)
   result = t
 
 proc add*[K](t: var RBTree[K,void], k: K): var RBTree[K,void] {.discardable.} =
@@ -245,7 +260,7 @@ proc add*[K](t: var RBTree[K,void], k: K): var RBTree[K,void] {.discardable.} =
   t.root = newRoot
   if ok:
     inc t.length
-    fixViolation(t.root, pt)
+    fixInsert(t.root, pt)
   result = t
 
 proc findKey[K,V](n: RBNode[K,V], k: K): RBNode[K,V] {.inline.} =
@@ -293,31 +308,6 @@ proc max*[K,V](t: RBTree[K,V]): K =
   assert n != nil
   n.k
 
-proc bstDeleteImpl(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] {.inline.} = 
-  assert(not pt.isNil)
-
-  let haveLeft = not(pt.l.isNil)
-  let haveRight = not(pt.r.isNil)
-  let isRoot = pt == root
-
-  if not(haveLeft) and not(haveRight):
-    if isRoot:
-      return (nil, root)
-    else:
-      return (root, pt.replace(nil))
-  elif not(haveLeft) or not(haveRight):
-    var n = if haveLeft: pt.l else: pt.r
-    if isRoot:
-      return (n.cleanParent, root)
-    else:
-      return (root, pt.replace(n))
-  else:
-    var n = pt.r.findMin
-    if isRoot:
-      return (n, pt.replace(n))
-    else:
-      return (root, pt.replace(n))
-
 proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
   var i1 = (iterator(t: RBTree[K,V]): (K,V))rbtree.pairs
   var i2 = (iterator(t: RBTree[K,V]): (K,V))rbtree.pairs
@@ -350,20 +340,202 @@ proc `==`*[K](l, r: RBTree[K,void]): bool =
     if r1 != r2:
       return false
 
-when defined(debug):
-  proc bstDelete*(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] = bstDeleteImpl(root, pt)
-else:
-  proc bstDelete(root, pt: var RBNode): tuple[root: RBNode, removed: RBNode] = bstDeleteImpl(root, pt)
+proc bstDeleteImpl(root, pt: var RBNode): tuple[root: RBNode, deleted: RBNode] {.inline.} = 
+  assert(not pt.isNil)
 
-proc del*[K](t: var RBTree[K,void], k: K): var RBTree[K,void] {.discardable.} =
+  let haveLeft = not(pt.l.isNil)
+  let haveRight = not(pt.r.isNil)
+  let isRoot = pt == root
+
+  if not(haveLeft) and not(haveRight):
+    if isRoot:
+      return (nil, nil)
+    else:
+      pt.replace(nil)
+      return (root, pt)
+  elif not(haveLeft) or not(haveRight):
+    var n = if haveLeft: pt.l else: pt.r
+    if isRoot:
+      return (n.cleanParent, pt)
+    else:
+      pt.replace(n)
+      return (root, pt)
+  else:
+    var n = pt.r.findMin
+    pt.replace(n)
+    if isRoot:
+      return (n, pt)
+    else:
+      return (root, pt)
+
+when defined(debug):
+  proc bstDelete*(root, pt: var RBNode): tuple[root: RBNode, deleted: RBNode] = bstDeleteImpl(root, pt)
+else:
+  proc bstDelete(root, pt: var RBNode): tuple[root: RBNode, deleted: RBNode] = bstDeleteImpl(root, pt)
+
+proc succ(n: RBNode): RBNode =
+  if n.isNil:
+    return nil
+  elif not n.right.isNil:
+    var p = n.right
+    while not p.left.isNil:
+      p = p.left
+    return p
+  else:
+    var p = n.parent
+    var ch = n
+    while not p.isNil and ch == p.right:
+      ch = p
+      p = p.parent
+    return p
+
+proc fixDelete(root: var RBNode, n: RBNode) {.inline.} =
+  assert(not root.isNil)
+  assert(not n.isNil)
+
+  var x = n
+
+  while not x.isNil and x != root and x.color == BLACK:
+    if x.isLeftChild:
+      var sib = x.parent.right
+      if sib.color == RED:
+        setColor(sib, BLACK)
+        setColor(x.parent, RED)
+        rotateLeft(root, x.parent)
+        sib = x.parent.right 
+
+      if sib.left.color == BLACK and sib.right.color == BLACK:
+        setColor(sib, RED)
+        x = x.parent
+      else:
+        if sib.right.color == BLACK:
+          setColor(sib.left, BLACK)
+          setColor(sib, RED)
+          rotateRight(root, sib)
+          sib = x.parent.right
+        setColor(sib, x.parent.color)
+        setColor(x.parent, BLACK)
+        setColor(sib.right, BLACK)
+        rotateLeft(root, x.parent)
+        x = root
+    else:
+      var sib = x.parent.left
+      if sib.color == RED:
+        setColor(sib, BLACK)
+        setColor(x.parent, RED)
+        rotateRight(root, x.parent)
+        sib = x.parent.left 
+        
+      if sib.right.color == BLACK and sib.left.color == BLACK:
+        setColor(sib, RED)
+        x = x.parent
+      else:
+        if sib.left.color == BLACK:
+          setColor(sib.right, BLACK)
+          setColor(sib, RED)
+          rotateLeft(root, sib)
+          sib = x.parent.left
+        setColor(sib, x.parent.color)
+        setColor(x.parent, BLACK)
+        setColor(sib.left, BLACK)
+        rotateRight(root, x.parent)
+        x = root
+
+  setColor(x, BLACK)
+
+# proc del*[K,V](t: var RBTree[K,V], k: K): var RBTree[K,V] {.discardable.} =
+#   result = t
+#   var n = t.root.findKey(k)
+#   if n.isNil:
+#     echo "SHIT!"
+#     return
+#   var res = bstDelete(t.root, n)
+#   t.root = res[0]
+#   dec t.length
+#   if res[1].isNil:
+#     return
+#   fixDelete(t.root, res[1])
+
+proc removeNode[K,V](root: var RBNode[K,V], n: RBNode[K,V]) =
+  var p = n
+  if not p.l.isNil and not p.r.isNil:
+    var s = p.succ
+    p.k = s.k
+    when V isnot void:
+      p.v = s.v
+    p = s
+  var repl = if not p.l.isNil: p.l else: p.r
+  if not repl.isNil:
+    repl.p = p.p
+    if p.p.isNil:
+      root = repl
+    elif p == p.p.l:
+      p.p.l = repl
+    else:
+      p.p.r = repl
+    p.clean
+    if p.c == BLACK:
+      fixDelete(root, repl)
+  elif p.p.isNil:
+    root = nil
+  else:
+    if p.c == BLACK:
+      fixDelete(root, p)
+    if not p.p.isNil:
+      if p.p.l == p:
+        p.p.l = nil
+      elif p.p.r == p:
+        p.p.r = nil
+      p.p = nil
+          
+proc del*[K,V](t: var RBTree[K,V], k: K): var RBTree[K,V] {.discardable.} =
   result = t
   var n = t.root.findKey(k)
   if n.isNil:
     return
-  let res = bstDelete(t.root, n)
-  t.root = res[0]
+  removeNode(t.root, n)
   dec t.length
 
+# proc del*[K,V](t: var RBTree[K,V], k: K): var RBTree[K,V] {.discardable.} =
+#   result = t
+#   var n = t.root.findKey(k)
+#   if n.isNil:
+#     return
+#   dec t.length
+#   if not(n.left.isNil) and not(n.right).isNil:
+#     var s = n.succ
+#     n.k = s.k
+#     when V isnot void:
+#       n.v = s.v
+#       n = s
+
+#   var repl = if not(n.left.isNil): n.left else: n.right
+#   if not(repl.isNil):
+#     repl.p = n.p
+#     if n.p.isNil:
+#       t.root = repl
+#     elif n.isLeftChild:
+#       n.p.l = repl
+#     else:
+#       n.p.r = repl
+
+#     n.l = nil
+#     n.r = nil
+#     n.p = nil
+#     if n.color == BLACK:
+#       fixDelete(t.root, repl)
+#   elif n.p.isNil:
+#     t.root = nil
+#   else:
+#     if n.c == BLACK:
+#       fixDelete(t.root, n)
+#     if not(n.p.isNil):
+#       if n.isLeftChild:
+#         n.p.l = nil
+#       elif n.isRightChild:
+#         n.p.r = nil
+#       n.p = nil
+        
 ####################################################################################################
 # Pretty print
 

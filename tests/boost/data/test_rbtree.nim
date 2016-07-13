@@ -1,4 +1,4 @@
-import unittest, boost.data.rbtree, sets, random, sequtils, algorithm
+import unittest, boost.data.rbtree, sets, random, sequtils, algorithm, random
 
 suite "RBTree":
   
@@ -75,6 +75,27 @@ suite "RBTree":
     var t2 = newRBTree[int]()
     t1.add(1).add(2).add(3).add(4).add(5)
     t2.add(1).add(2).add(3).add(4)
-    check: t1.del(5) == t2
+    t1.del(5)
+    check: t1 == t2
     check: t1.len == 4
+    t1.del(1)
+    check: t1.len == 3
+    t1.del(3)
+    check: t1.len == 2
+    t1.del(2)
+    check: t1.len == 1
+    t1.del(4)
+    check: t1.len == 0
     
+  test "RBTree - stress":
+    randomize(1234)
+    var t = newRBTree[int]()
+    const SIZE = 100000
+    for i in 1..SIZE:
+      t.add(i)
+      check: t.len == i
+    for i in 1..SIZE:
+      check: t.hasKey(i) == true
+      t.del(i)
+      check: t.hasKey(i) == false
+      check: t.len == SIZE - i
