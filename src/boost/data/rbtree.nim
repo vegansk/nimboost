@@ -5,33 +5,33 @@ import boost.typeclasses
 ####################################################################################################
 # Type
 
-when defined(debug):
+when defined(exportPrivate):
   type
-    RBNodeColor* = enum BLACK, RED
-    RBNode*[K,V] = ref RBNodeObj[K,V]
-    RBNodeObj*[K,V] = object 
+    Color* = enum BLACK, RED
+    Node*[K,V] = ref NodeObj[K,V]
+    NodeObj*[K,V] = object 
       k*: K
       when not(V is void):
         v*: V
-        c*: RBNodeColor
-        l*, r*, p*: RBNode[K,V]
+        c*: Color
+        l*, r*, p*: Node[K,V]
     RBTree*[K,V] = ref RBTreeObj[K,V]
     RBTreeObj*[K,V] = object
-      root*: RBNode[K,V]
+      root*: Node[K,V]
       length*: int
 else:
   type
-    RBNodeColor = enum BLACK, RED
-    RBNode[K,V] = ref RBNodeObj[K,V]
-    RBNodeObj[K,V] = object 
+    Color = enum BLACK, RED
+    Node[K,V] = ref NodeObj[K,V]
+    NodeObj[K,V] = object 
       k: K
       when not(V is void):
         v: V
-        c: RBNodeColor
-        l, r, p: RBNode[K,V]
+        c: Color
+        l, r, p: Node[K,V]
     RBTree*[K,V] = ref RBTreeObj[K,V]
     RBTreeObj[K,V] = object
-      root: RBNode[K,V]
+      root: Node[K,V]
       length: int
 
 proc newRBTree*[K,V]: RBTree[K,V] {.inline.} =
@@ -42,13 +42,13 @@ proc newRBTree*[K]: RBTree[K,void] {.inline} =
 
 proc len*(t: RBTree): auto {.inline.} = t.length
 
-proc newNode[K;V: NonVoid](k: K, v: V, c: RBNodeColor, l, r, p: RBNode[K,V] = nil): RBNode[K,V] {.inline.} =
-  RBNode[K,V](k: k, v: v, c: c, l: l, r: r, p: p)
+proc newNode[K;V: NonVoid](k: K, v: V, c: Color, l, r, p: Node[K,V] = nil): Node[K,V] {.inline.} =
+  Node[K,V](k: k, v: v, c: c, l: l, r: r, p: p)
 
-proc newNode[K](k: K, c: RBNodeColor, l, r, p: RBNode[K,void] = nil): RBNode[K,void] {.inline.} =
-  RBNode[K,void](k: k, c: c, l: l, r: r, p: p)
+proc newNode[K](k: K, c: Color, l, r, p: Node[K,void] = nil): Node[K,void] {.inline.} =
+  Node[K,void](k: k, c: c, l: l, r: r, p: p)
 
-template iterateNode(n: RBNode, next: untyped, op: untyped): untyped =
+template iterateNode(n: Node, next: untyped, op: untyped): untyped =
   if not n.isNil:
     var next = n
     while not next.l.isNil:
@@ -104,20 +104,20 @@ iterator mvalues*[K,V](t: var RBTree[K,V]): var V =
 ####################################################################################################
 # Implementation based on http://www.geeksforgeeks.org/red-black-tree-set-1-introduction-2/
 
-proc isLeftChild(n: RBNode): bool {.inline.} =
+proc isLeftChild(n: Node): bool {.inline.} =
   not(n.isNil) and not(n.p.isNil) and n.p.l == n
 
-proc isRightChild(n: RBNode): bool {.inline.} =
+proc isRightChild(n: Node): bool {.inline.} =
   not(n.isNil) and not(n.p.isNil) and n.p.r == n
 
-proc clean(n: RBNode): RBNode {.inline, discardable.} =
+proc clean(n: Node): Node {.inline, discardable.} =
   if not(n.isNil):
     n.l = nil
     n.r = nil
     n.p = nil
   n
 
-proc replace(`from`: RBNode, to: RBNode): RBNode {.inline, discardable.} =
+proc replace(`from`: Node, to: Node): Node {.inline, discardable.} =
   if `from`.isLeftChild:
     `from`.p.l = to
   elif `from`.isRightChild:
@@ -137,28 +137,28 @@ proc replace(`from`: RBNode, to: RBNode): RBNode {.inline, discardable.} =
     `from`.r.p = `to`
   return `from`
 
-proc cleanParent(n: var RBNode): RBNode {.inline.} =
+proc cleanParent(n: var Node): Node {.inline.} =
   if not(n.isNil):
     n.p = nil
   n
 
-proc color(n: RBNode): RBNodeColor {.inline.} =
+proc color(n: Node): Color {.inline.} =
   if n.isNil: BLACK else: n.c
 
-proc setColor(n: RBNode, c: RBNodeColor) {.inline.} =
+proc setColor(n: Node, c: Color) {.inline.} =
   if not(n.isNil):
     n.c = c
 
-proc parent(n: RBNode): RBNode {.inline.} =
+proc parent(n: Node): Node {.inline.} =
   if n.isNil: nil else: n.p
 
-proc left(n: RBNode): RBNode {.inline.} =
+proc left(n: Node): Node {.inline.} =
   if n.isNil: nil else: n.l
 
-proc right(n: RBNode): RBNode {.inline.} =
+proc right(n: Node): Node {.inline.} =
   if n.isNil: nil else: n.r
 
-proc bstInsert(root, pt: var RBNode): tuple[root: RBNode, inserted: bool] =
+proc bstInsert(root, pt: var Node): tuple[root: Node, inserted: bool] =
   ## Returns new root and the flag: true for insert, false for update
   if root.isNil:
     return (pt, true)
@@ -183,7 +183,7 @@ proc bstInsert(root, pt: var RBNode): tuple[root: RBNode, inserted: bool] =
   pt.p = prev
   return (root, true)
 
-proc rotateLeft(root: var RBNode, pt: RBNode) {.inline.} =
+proc rotateLeft(root: var Node, pt: Node) {.inline.} =
   var r = pt.r
   pt.r = r.l
   if not pt.r.isNil:
@@ -198,7 +198,7 @@ proc rotateLeft(root: var RBNode, pt: RBNode) {.inline.} =
   r.l = pt
   pt.p = r
 
-proc rotateRight(root: var RBNode, pt: RBNode) {.inline.} =
+proc rotateRight(root: var Node, pt: Node) {.inline.} =
   var l = pt.l
   pt.l = l.r
   if not pt.l.isNil:
@@ -213,7 +213,7 @@ proc rotateRight(root: var RBNode, pt: RBNode) {.inline.} =
   l.r = pt
   pt.p = l
 
-proc fixInsert(root, pt: var RBNode) =
+proc fixInsert(root, pt: var Node) =
   var ppt: type(pt)
   var gppt: type(pt)
 
@@ -270,7 +270,7 @@ proc add*[K](t: RBTree[K,void], k: K): RBTree[K,void] {.discardable.} =
     fixInsert(t.root, pt)
   result = t
 
-proc findKey[K,V](n: RBNode[K,V], k: K): RBNode[K,V] {.inline.} =
+proc findKey[K,V](n: Node[K,V], k: K): Node[K,V] {.inline.} =
   var curr = n
   while not(curr.isNil):
     if k == curr.k:
@@ -281,7 +281,7 @@ proc findKey[K,V](n: RBNode[K,V], k: K): RBNode[K,V] {.inline.} =
       curr = curr.r
   return nil
 
-proc findMin[K,V](n: RBNode[K,V]): RBNode[K,V] {.inline.} =
+proc findMin[K,V](n: Node[K,V]): Node[K,V] {.inline.} =
   if n.isNil:
     return nil
   var curr = n
@@ -289,7 +289,7 @@ proc findMin[K,V](n: RBNode[K,V]): RBNode[K,V] {.inline.} =
     curr = curr.l
   return curr
 
-proc findMax[K,V](n: RBNode[K,V]): RBNode[K,V] {.inline.} =
+proc findMax[K,V](n: Node[K,V]): Node[K,V] {.inline.} =
   if n.isNil:
     return nil
   var curr = n
@@ -347,7 +347,7 @@ proc `==`*[K](l, r: RBTree[K,void]): bool =
     if r1 != r2:
       return false
 
-proc bstDeleteImpl(root, pt: var RBNode): tuple[root: RBNode, deleted: RBNode] {.inline.} = 
+proc bstDeleteImpl(root, pt: var Node): tuple[root: Node, deleted: Node] {.inline.} = 
   assert(not pt.isNil)
 
   let haveLeft = not(pt.l.isNil)
@@ -375,12 +375,12 @@ proc bstDeleteImpl(root, pt: var RBNode): tuple[root: RBNode, deleted: RBNode] {
     else:
       return (root, pt)
 
-when defined(debug):
-  proc bstDelete*(root, pt: var RBNode): tuple[root: RBNode, deleted: RBNode] = bstDeleteImpl(root, pt)
+when defined(exportPrivate):
+  proc bstDelete*(root, pt: var Node): tuple[root: Node, deleted: Node] = bstDeleteImpl(root, pt)
 else:
-  proc bstDelete(root, pt: var RBNode): tuple[root: RBNode, deleted: RBNode] = bstDeleteImpl(root, pt)
+  proc bstDelete(root, pt: var Node): tuple[root: Node, deleted: Node] = bstDeleteImpl(root, pt)
 
-proc succ(n: RBNode): RBNode =
+proc succ(n: Node): Node =
   if n.isNil:
     return nil
   elif not n.right.isNil:
@@ -396,7 +396,7 @@ proc succ(n: RBNode): RBNode =
       p = p.parent
     return p
 
-proc fixDelete(root: var RBNode, n: RBNode) {.inline.} =
+proc fixDelete(root: var Node, n: Node) {.inline.} =
   assert(not root.isNil)
   assert(not n.isNil)
 
@@ -450,7 +450,7 @@ proc fixDelete(root: var RBNode, n: RBNode) {.inline.} =
 
   setColor(x, BLACK)
 
-proc removeNode[K,V](root: var RBNode[K,V], n: RBNode[K,V]) =
+proc removeNode[K,V](root: var Node[K,V], n: Node[K,V]) =
   var p = n
   if not p.l.isNil and not p.r.isNil:
     var s = p.succ
@@ -507,7 +507,7 @@ proc mkTab(tab, s: int): string =
 const TAB_STEP = 2
     
 # TODO: It's ugly for now, need another implementation
-proc treeReprImpl[K,V](n: RBNode[K,V], tab: int): string =
+proc treeReprImpl[K,V](n: Node[K,V], tab: int): string =
   result = mkTab(tab, TAB_STEP)
   if n.isNil:
     result.add("[NIL]\n")
