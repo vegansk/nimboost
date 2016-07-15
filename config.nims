@@ -18,7 +18,7 @@ proc buildBase(debug: bool, bin: string, src: string) =
     --opt: size
   else:
     --define: debug
-    --define: exportPrivate
+    # --define: exportPrivate
     --debuginfo
     --debugger: native
     --linedir: on
