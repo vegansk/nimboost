@@ -1,4 +1,4 @@
-import unittest, boost.data.rbtree, sets, random, sequtils, algorithm, random
+import unittest, boost.data.mutable.rbtree, sets, random, sequtils, algorithm, random
 
 suite "RBTree":
   
