@@ -47,6 +47,12 @@ proc value[K;V: NonVoid](t: RBTree[K,V]): V {.inline.} =
   else:
     t.v
 
+proc len*(t: RBTree): int =
+  if t.isLeaf:
+    0
+  else:
+    len(t.l) + 1 + len(t.r)
+
 proc balance[K,V](a: RBTree[K,V], k: K, v: V, b: RBTree[K,V]): RBTree[K,V] {.inline.} =
   if a.isRed and b.isRed:
     result = newRBTree(RED, newRBTree(BLACK, a.l, a.k, a.value, a.r), k, v, newRBtree(BLACK, b.l, b.k, b.value, b.r))

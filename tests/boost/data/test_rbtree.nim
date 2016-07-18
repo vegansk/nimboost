@@ -14,6 +14,7 @@ suite "RBTree":
     var t = newRBTree[int, string]()
     for i in 0..100:
       t = t.add(i, $i)
+    echo t
     for i in 0..100:
       check: t.hasKey(i)
       check: t.getOrDefault(i) == $i
@@ -22,9 +23,27 @@ suite "RBTree":
     var t = newRBTree[int, void]()
     for i in 1..5:
       t = t.add(i)
-    echo t
     for i in 1..5:
       t = t.del(i)
-      echo t
       
+  proc shuffle[T](xs: var openarray[T]) =
+    for i in countup(1, xs.len - 1):
+      let j = random(succ i)
+      swap(xs[i], xs[j])
     
+  test "RBTree - stress":
+    randomize(1234)
+    var t = newRBTree[int,void]()
+    const SIZE = 100_000
+    var indices = newSeq[int](SIZE)
+    for i in 0..<SIZE:
+      t = t.add(i)
+      indices[i] = i
+      # check: t.len == i + 1
+    indices.shuffle
+    for j in 0..<SIZE:
+      let i = indices[j]
+      check: t.hasKey(i) == true
+      t = t.del(i)
+      check: t.hasKey(i) == false
+      # check: t.len == SIZE - j - 1
