@@ -1,9 +1,11 @@
 ## Common typeclasses definitions
 
+import types
+
 type
   NonVoid* = concept x
     ## Non-void type
-    x isnot void == true
+    x isnot void
   Eq* = concept x, y
     ## Equality class
     (x == y) is bool
