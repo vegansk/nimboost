@@ -3,7 +3,7 @@ import unittest, boost.data.rbtreem, sets, random, sequtils, algorithm, random
 suite "RBTree":
   
   test "RBTreeM - initialization":
-    let t = newRBTreeM[int]()
+    let t = newRBSetM[int]()
     check: t.len == 0 
     # Value's type is void
     check: not compiles(toSeq(t.values()))
@@ -13,25 +13,6 @@ suite "RBTree":
     for k in t:
       inc x
     check: x == 0
-
-  when false:
-    test "RBTreeM - insert (internal)":
-      var t = newRBTreeM[int]()
-      t.add(1).add(2).add(3).add(4).add(5)
-
-      check: t.root.k == 2
-      check: t.root.l.k == 1
-      check: t.root.l.l.isNil and t.root.l.r.isNil
-      check: t.root.r.k == 4
-      check: t.root.r.l.k == 3
-      check: t.root.r.l.l.isNil and t.root.r.l.r.isNil
-      check: t.root.r.r.k == 5
-
-      t.add(6).add(7).add(8)
-
-      check: t.root.k == 4
-      check: t.root.l.k == 2
-      check: t.root.l.l.k == 1
 
   test "RBTreeM - insert":
     var t = newRBTreeM[int, string]()
@@ -48,32 +29,19 @@ suite "RBTree":
     check: t.max == 100
 
   test "RBTreeM - equality":
-    var t1 = newRBTreeM[int, string]().add(1, "a").add(2, "b").add(3, "c")
-    var t2 = newRBTreeM[int, string]().add(3, "c").add(2, "b").add(1, "a")
+    var t1 = mkRBTreeM([(1, "a"), (2, "b"), (3, "c")])
+    var t2 = mkRBTreeM([(3, "c"), (2, "b"), (1, "a")])
     check: t1 == t2
     check: t1 != t2.add(4, "d")
 
-    var t3 = newRBTreeM[int]().add(1).add(2).add(3)
-    var t4 = newRBTreeM[int]().add(3).add(1).add(2)
+    var t3 = mkRBSetM([1, 2, 3])
+    var t4 = mkRBSetM([3, 1, 2])
     check: t3 == t4
     check: t3 != t4.add(4)
 
-  when false:
-    test "RBTreeM - delete (internal)":
-      var t = newRBTreeM[int]().add(1).add(2).add(3).add(4).add(5)
-
-      var res = t.root.bstDelete(t.root)
-      check: res.root.k == 3
-      check: res.root.l.p == res.root
-      check: res.root.r.p == res.root
-      res = res.root.bstDelete(res.root.l)
-      check: res.root.l.isNil
-      res = res.root.bstDelete(res.root.r)
-      check: res.root.r.k == 5
-
   test "RBTreeM - delete":
-    var t1 = newRBTreeM[int]().add(1).add(2).add(3).add(4).add(5)
-    var t2 = newRBTreeM[int]().add(1).add(2).add(3).add(4)
+    var t1 = mkRBSetM([1, 2, 3, 4, 5])
+    var t2 = mkRBSetM([1, 2, 3, 4])
     check: t1.del(5) == t2
     check: t1.len == 4
     check: t1.del(1).len == 3
@@ -82,14 +50,11 @@ suite "RBTree":
     t1.del(4)
     check: t1.del(4).len == 0
 
-  proc shuffle[T](xs: var openarray[T]) =
-    for i in countup(1, xs.len - 1):
-      let j = random(succ i)
-      swap(xs[i], xs[j])
+  include shuffle
     
   test "RBTreeM - stress":
     randomize(1234)
-    var t = newRBTreeM[int]()
+    var t = newRBSetM[int]()
     const SIZE = 100_000
     var indices = newSeq[int](SIZE)
     for i in 0..<SIZE:

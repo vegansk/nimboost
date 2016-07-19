@@ -1,4 +1,4 @@
-import boost.typeclasses, boost.types
+import boost.typeclasses, boost.types, boost.data.stackm
 
 ####################################################################################################
 # Type
@@ -235,6 +235,36 @@ proc del*[K;V: NonVoid](t: RBTree[K,V], k: K): RBTree[K,V] =
 proc del*[K](t: RBTree[K,void], k: K): RBTree[K,void] =
   # Same assumptions as in void version of `add`
   cast[RBTree[K,void]](del(cast[RBTree[K,Unit]](t), k))
+
+template iterateNode(n: typed, next: untyped, op: untyped): untyped =
+  var s = newStackM[type(n)]()
+  var root = n
+  while root.isBranch:
+    push(s, root)
+    root = root.l
+  while not s.isEmpty:
+    var next = s.pop
+    root = next.r
+    while root.isBranch:
+      push(s, root)
+      root = root.l
+    `op`
+
+iterator items*(t: RBTree): auto =
+  iterateNode(t.root, next):
+    yield next.k
+
+iterator keys*(t: RBTree): auto =
+  iterateNode(t.root, next):
+    yield next.k
+
+iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): (K,V) =
+  iterateNode(t.root, next):
+    yield (next.k, next.v)
+
+iterator values*(t: RBTree): auto =
+  iterateNode(t.root, next):
+    yield next.value
 
 ####################################################################################################
 # Pretty print

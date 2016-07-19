@@ -10,6 +10,12 @@ suite "RBTree":
     check: newRBSet[int]().isLeaf
     check: newRBSet[int]().add(1).add(2).add(3).isBranch
 
+    check: toSeq(mkRBSet([1, 2, 3]).items) == @[1, 2, 3]
+    check: toSeq(mkRBSet([1, 2, 3]).keys) == @[1, 2, 3]
+    let t = mkRBTree([(1, "a"), (2, "b"), (3, "c")])
+    check: toSeq(t.pairs) == @[(1, "a"), (2, "b"), (3, "c")]
+    check: toSeq(t.values) == @["a", "b", "c"]
+
   test "RBTree - find":
     var t = newRBTree[int, string]()
     for i in 0..100:
@@ -39,11 +45,8 @@ suite "RBTree":
     s = s.del(1)
     check: s.len == 3
 
-  proc shuffle[T](xs: var openarray[T]) =
-    for i in countup(1, xs.len - 1):
-      let j = random(succ i)
-      swap(xs[i], xs[j])
-    
+  include shuffle
+
   test "RBTree - stress":
     randomize(1234)
     var t = newRBSet[int]()

@@ -37,7 +37,7 @@ else:
 proc newRBTreeM*[K,V]: RBTreeM[K,V] {.inline.} =
   RBTreeM[K,V](root: nil, length: 0)
 
-proc newRBTreeM*[K]: RBTreeM[K,void] {.inline} =
+proc newRBSetM*[K]: RBTreeM[K,void] {.inline} =
   RBTreeM[K,void](root: nil, length: 0)
 
 proc len*(t: RBTreeM): auto {.inline.} = t.length
@@ -269,6 +269,16 @@ proc add*[K](t: RBTreeM[K,void], k: K): RBTreeM[K,void] {.discardable.} =
     inc t.length
     fixInsert(t.root, pt)
   result = t
+
+proc mkRBTreeM*[K;V: NonVoid](arr: openarray[(K,V)]): RBTreeM[K,V] =
+  result = newRBTreeM[K,V]()
+  for el in arr:
+    result.add(el[0], el[1])
+
+proc mkRBSetM*[K](arr: openarray[K]): RBTreeM[K,void] =
+  result = newRBSetM[K]()
+  for el in arr:
+    result.add(el)
 
 proc findKey[K,V](n: Node[K,V], k: K): Node[K,V] {.inline.} =
   var curr = n
