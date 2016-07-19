@@ -5,8 +5,8 @@ import boost.typeclasses, boost.types
 
 type
   Color = enum BLACK, RED 
-  RBTree*[K,V] = ref RBTreeObj[K,V] not nil
-  RBTreeObj[K,V] = object
+  Node[K,V] = ref NodeObj[K,V] not nil
+  NodeObj[K,V] = object
     case e: bool
     of true:
       discard
@@ -15,32 +15,48 @@ type
       c: Color
       when V isnot void and V isnot Unit:
         v: V
-      l,r: RBTree[K,V]
+      l,r: Node[K,V]
+  RBTree*[K,V] = ref RBTreeObj[K,V] not nil
+  RBTreeObj[K,V] = object
+    root: Node[K,V]
+    length: int
 
-proc newRBtree*[K,V](): RBTree[K,V] =
-  RBTree[K,V](e: true)
+proc newNode[K,V](): Node[K,V] =
+  Node[K,V](e: true)
 
-proc newRBTree[K](c: Color, l: RBTree[K,Unit], k: K, v: Unit, r: RBTree[K,Unit]): RBTree[K,Unit] {.inline.} =
-  RBTree[K,Unit](k: k, c: c, l: l, r: r)
-proc newRBTree[K;V: NonVoid](c: Color, l: RBTree[K,V], k: K, v: V, r: RBTree[K,V]): RBTree[K,V] {.inline.} =
-  RBTree[K,V](k: k, v: v, c: c, l: l, r: r)
-proc newRBTree[K](c: Color, l: RBTree[K,void], k: K, r: RBTree[K,void]): RBTree[K,void] {.inline.} =
-  RBTree[K,void](k: k, c: c, l: l, r: r)
+proc newNode[K](c: Color, l: Node[K,Unit], k: K, v: Unit, r: Node[K,Unit]): Node[K,Unit] {.inline.} =
+  Node[K,Unit](k: k, c: c, l: l, r: r)
+proc newNode[K;V: NonVoid](c: Color, l: Node[K,V], k: K, v: V, r: Node[K,V]): Node[K,V] {.inline.} =
+  Node[K,V](k: k, v: v, c: c, l: l, r: r)
+proc newNode[K](c: Color, l: Node[K,void], k: K, r: Node[K,void]): Node[K,void] {.inline.} =
+  Node[K,void](k: k, c: c, l: l, r: r)
 
-proc color(t: RBTree): Color {.inline.} =
+proc newRBTree*[K;V: NonVoid](): RBTree[K,V] =
+  RBTree[K,V](root: newNode[K,V](), length: 0)
+
+proc newRBSet*[K](): RBTree[K,void] =
+  RBTree[K,void](root: newNode[K,void](), length: 0)
+
+proc newRBTree[K,V](root: Node[K,V], length: int): RBTree[K,V] =
+  RBTree[K,V](root: root, length: length)
+
+proc color(t: Node): Color {.inline.} =
   case t.e
   of true:
     BLACK
   else:
     t.c
 
-proc isEmpty*(t: RBTree): bool {.inline.} = t.e
-proc isLeaf*(t: RBTree): bool {.inline.} = t.isEmpty
-proc isBranch*(t: RBTree): bool {.inline.} = not t.isEmpty
-proc isRed(t: RBTree): bool {.inline.} = t.color == RED
-proc isBlack(t: RBTree): bool {.inline.} = t.color == BLACK
+proc isEmpty(t: Node): bool {.inline.} = t.e
+proc isLeaf(t: Node): bool {.inline.} = t.isEmpty
+proc isBranch(t: Node): bool {.inline.} = not t.isEmpty
+proc isEmpty*(t: RBTree): bool {.inline.} = t.root.isEmpty
+proc isLeaf*(t: RBTree): bool {.inline.} = t.root.isEmpty
+proc isBranch*(t: RBTree): bool {.inline.} = not t.root.isEmpty
+proc isRed(t: Node): bool {.inline.} = t.color == RED
+proc isBlack(t: Node): bool {.inline.} = t.color == BLACK
 
-proc value[K;V: NonVoid](t: RBTree[K,V]): V {.inline.} =
+proc value[K;V: NonVoid](t: Node[K,V]): V {.inline.} =
   assert t.isBranch, "Can't get value of leaf"
   when V is Unit:
     ()
@@ -48,52 +64,71 @@ proc value[K;V: NonVoid](t: RBTree[K,V]): V {.inline.} =
     t.v
 
 proc len*(t: RBTree): int =
-  if t.isLeaf:
-    0
-  else:
-    len(t.l) + 1 + len(t.r)
+  t.length
 
-proc balance[K,V](a: RBTree[K,V], k: K, v: V, b: RBTree[K,V]): RBTree[K,V] {.inline.} =
+proc balance[K,V](a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] {.inline.} =
   if a.isRed and b.isRed:
-    result = newRBTree(RED, newRBTree(BLACK, a.l, a.k, a.value, a.r), k, v, newRBtree(BLACK, b.l, b.k, b.value, b.r))
+    result = newNode(RED, newNode(BLACK, a.l, a.k, a.value, a.r), k, v, newNode(BLACK, b.l, b.k, b.value, b.r))
   elif a.isRed and a.l.isRed:
-    result = newRBtree(RED, newRBTree(BLACK, a.l.l, a.l.k, a.l.value, a.l.r), a.k, a.value, newRBTree(BLACK, a.r, k, v, b))
+    result = newNode(RED, newNode(BLACK, a.l.l, a.l.k, a.l.value, a.l.r), a.k, a.value, newNode(BLACK, a.r, k, v, b))
   elif a.isRed and a.r.isRed:
-    result = newRBTree(RED, newRBtree(BLACK, a.l, a.k, a.value, a.r.l), a.r.k, a.r.value, newRBTree(BLACK, a.r.r, k, v, b))
+    result = newNode(RED, newNode(BLACK, a.l, a.k, a.value, a.r.l), a.r.k, a.r.value, newNode(BLACK, a.r.r, k, v, b))
   elif b.isRed and b.r.isRed:
-    result = newRBtree(RED, newRBTree(BLACK, a, k, v, b.l), b.k, b.value, newRBTree(BLACK, b.r.l, b.r.k, b.r.value, b.r.r))
+    result = newNode(RED, newNode(BLACK, a, k, v, b.l), b.k, b.value, newNode(BLACK, b.r.l, b.r.k, b.r.value, b.r.r))
   elif b.isRed and b.l.isRed:
-    result = newRBtree(RED, newRBTree(BLACK, a, k, v, b.l.l), b.l.k, b.l.value, newRBTree(BLACK, b.l.r, b.k, b.value, b.r))
+    result = newNode(RED, newNode(BLACK, a, k, v, b.l.l), b.l.k, b.l.value, newNode(BLACK, b.l.r, b.k, b.value, b.r))
   else:
-    result = newRBTree(BLACK, a, k, v, b)
+    result = newNode(BLACK, a, k, v, b)
 
-proc add*[K;V: NonVoid](t: RBTree[K,V], k: K, v: V): RBTree[K,V] =
-  proc ins(t: RBTree[K,V]): RBTree[K,V] =
+proc add[K;V: NonVoid](t: Node[K,V], k: K, v: V): (Node[K,V], bool) =
+  var ok = false
+  proc ins(t: Node[K,V], ok: var bool): Node[K,V] =
     if t.isEmpty:
-      result = newRBtree(RED, newRBTree[K,V](), k, v, newRBTree[K,V]())
+      ok = true
+      result = newNode(RED, newNode[K,V](), k, v, newNode[K,V]())
     elif t.isBlack:
       if k < t.k:
-        result = balance(ins(t.l), t.k, t.value, t.r)
+        result = balance(ins(t.l, ok), t.k, t.value, t.r)
       elif k > t.k:
-        result = balance(t.l, t.k, t.value, ins(t.r))
+        result = balance(t.l, t.k, t.value, ins(t.r, ok))
       else:
         result = t
     else:
       if k < t.k:
-        result = newRBTree(RED, ins(t.l), t.k, t.value, t.r)
+        result = newNode(RED, ins(t.l, ok), t.k, t.value, t.r)
       elif k > t.k:
-        result = newRBTree(RED, t.l, t.k, t.value, ins(t.r))
+        result = newNode(RED, t.l, t.k, t.value, ins(t.r, ok))
       else:
         result = t
-  result = ins(t)
-  result = newRBTree(BLACK, result.l, result.k, result.value, result.r)
+  let res = ins(t, ok)
+  if ok:
+    result = (newNode(BLACK, res.l, res.k, res.value, res.r), ok)
+  else:
+    result = (t, ok)
 
+proc add*[K;V: NonVoid](t: RBTree[K,V], k: K, v: V): RBTree[K,V] =
+  let res = add(t.root, k, v)
+  if not res[1]:
+    result = t
+  else:
+    result = newRBTree(res[0], t.length + 1)
+    
 proc add*[K](t: RBTree[K,void], k: K): RBTree[K,void] =
   # RBTree[K,Unit] and RBTree[K,void] have the same
   # memory layout. So we use cast here
   cast[RBTree[K,void]](add(cast[RBTree[K,Unit]](t), k, ()))
 
-proc findNode[K,V](t: RBTree[K,V], k: K): RBTree[K,V] =
+proc mkRBTree*[K;V: NonVoid](arr: openarray[(K,V)]): RBTree[K,V] =
+  result = newRBTree[K,V]()
+  for el in arr:
+    result = result.add(el[0], el[1])
+
+proc mkRBSet*[K](arr: openarray[K]): RBTree[K,void] =
+  result = newRBSet[K]()
+  for el in arr:
+    result = result.add(el)
+  
+proc findNode[K,V](t: Node[K,V], k: K): Node[K,V] =
   if t.isLeaf or t.k == k:
     t
   elif t.k < k:
@@ -101,39 +136,45 @@ proc findNode[K,V](t: RBTree[K,V], k: K): RBTree[K,V] =
   else:
     t.l.findNode(k)
 
-proc hasKey*[K,V](t: RBTree[K,V], k: K): bool =
+proc hasKey[K,V](t: Node[K,V], k: K): bool =
   not t.findNode(k).isLeaf
 
-proc getOrDefault*[K;V: NonVoid](t: RBTree[K,V], k: K): V =
+proc hasKey*[K,V](t: RBTree[K,V], k: K): bool =
+  t.root.hasKey(k)
+
+proc getOrDefault[K;V: NonVoid](t: Node[K,V], k: K): V =
   let res = t.findNode(k)
   if res.isBranch:
     result = res.value
 
-proc blackToRed[K,V](t: RBTree[K,V]): RBTree[K,V] =
-  assert(t.isBlack and t.isBranch, "Invariance violation")
-  result = newRBTree(RED, t.l, t.k, t.value, t.r)
+proc getOrDefault*[K;V: NonVoid](t: RBTree[K,V], k: K): V =
+  t.root.getOrDefault(k)
 
-proc balanceLeft[K,V](a: RBTree[K,V], k: K, v: V, b: RBTree[K,V]): RBTree[K,V] =
+proc blackToRed[K,V](t: Node[K,V]): Node[K,V] =
+  assert(t.isBlack and t.isBranch, "Invariance violation")
+  result = newNode(RED, t.l, t.k, t.value, t.r)
+
+proc balanceLeft[K,V](a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] =
   if a.isRed:
-    result = newRBTree(RED, newRBTree(BLACK, a.l, a.k, a.value, a.r), k, v, b)
+    result = newNode(RED, newNode(BLACK, a.l, a.k, a.value, a.r), k, v, b)
   elif b.isBlack and b.isBranch:
     result = balance(a, k, v, b.blackToRed)
   elif b.isRed and b.l.isBlack and b.l.isBranch:
-    result = newRBTree(RED, newRBTree(BLACK, a, k, v, b.l.l), b.l.k, b.l.value, balance(b.l.r, b.k, b.value, b.r.blackToRed))
+    result = newNode(RED, newNode(BLACK, a, k, v, b.l.l), b.l.k, b.l.value, balance(b.l.r, b.k, b.value, b.r.blackToRed))
   else:
     assert false
 
-proc balanceRight[K,V](a: RBTree[K,V], k: K, v: V, b: RBTree[K,V]): RBTree[K,V] =
+proc balanceRight[K,V](a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] =
   if b.isRed:
-    result = newRBTree(RED, a, k, v, newRBTree(BLACK, b.l, b.k, b.value, b.r))
+    result = newNode(RED, a, k, v, newNode(BLACK, b.l, b.k, b.value, b.r))
   elif a.isBlack and a.isBranch:
     result = balance(a.blackToRed, k, v, b)
   elif a.isRed and a.r.isBlack and a.r.isBranch:
-    result = newRBTree(RED, balance(a.l.blackToRed, a.k, a.value, a.r.l), a.r.k, a.r.value, newRBTree(BLACK, a.r.r, k, v, b))
+    result = newNode(RED, balance(a.l.blackToRed, a.k, a.value, a.r.l), a.r.k, a.r.value, newNode(BLACK, a.r.r, k, v, b))
   else:
     assert false
 
-proc app[K,V](a, b: RBTree[K,V]): RBTree[K,V] =
+proc app[K,V](a, b: Node[K,V]): Node[K,V] =
   if a.isEmpty:
     result = b
   elif b.isEmpty:
@@ -141,35 +182,36 @@ proc app[K,V](a, b: RBTree[K,V]): RBTree[K,V] =
   elif a.isRed and b.isRed:
     let ar = a.r.app(b.l)
     if ar.isRed:
-      result = newRBTree(RED, newRBTree(RED, a.l, a.k, a.value, ar.l), ar.k, ar.value, newRBTree(RED, ar.r, b.k, b.value, b.r))
+      result = newNode(RED, newNode(RED, a.l, a.k, a.value, ar.l), ar.k, ar.value, newNode(RED, ar.r, b.k, b.value, b.r))
     else:
-      result = newRBTree(RED, a.l, a.k, a.value, newRBTree(RED, ar, b.k, b.value, b.r))
+      result = newNode(RED, a.l, a.k, a.value, newNode(RED, ar, b.k, b.value, b.r))
   elif a.isBlack and b.isBlack:
     let ar = a.r.app(b.l)
     if ar.isRed:
-      result = newRBTree(RED, newRBTree(BLACK, a.l, a.k, a.value, ar.l), ar.k, ar.value, newRBTree(BLACK, ar.r, b.k, b.value, b.r))
+      result = newNode(RED, newNode(BLACK, a.l, a.k, a.value, ar.l), ar.k, ar.value, newNode(BLACK, ar.r, b.k, b.value, b.r))
     else:
-      result = balanceLeft(a.l, a.k, a.value, newRBTree(BLACK, ar, b.k, b.value, b.r))
+      result = balanceLeft(a.l, a.k, a.value, newNode(BLACK, ar, b.k, b.value, b.r))
   elif b.isRed:
-    result = newRBTree(RED, app(a, b.l), b.k, b.value, b.r)
+    result = newNode(RED, app(a, b.l), b.k, b.value, b.r)
   elif a.isRed:
-    result = newRBTree(RED, a.l, a.k, a.value, app(a.r, b))
+    result = newNode(RED, a.l, a.k, a.value, app(a.r, b))
   else:
     assert false
 
-proc del*[K;V: NonVoid](t: RBTree[K,V], k: K): RBTree[K,V] =
-  proc del(t: RBTree[K,V]): RBTree[K,V]
-  proc delformLeft(a: RBTree[K,V], k: K, v: V, b: RBTree[K,V]): RBTree[K,V] =
+proc del[K;V: NonVoid](t: Node[K,V], k: K): (Node[K,V], bool) =
+  var ok = false
+  proc del(t: Node[K,V], ok: var bool): Node[K,V]
+  proc delformLeft(a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] =
     if a.isBlack and a.isBranch:
-      balanceLeft(del(a), k, v, b)
+      balanceLeft(del(a, ok), k, v, b)
     else:
-      newRBTree(RED, del(a), k, v, b)
-  proc delformRight(a: RBTree[K,V], k: K, v: V, b: RBTree[K,V]): RBTree[K,V] =
+      newNode(RED, del(a, ok), k, v, b)
+  proc delformRight(a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] =
     if b.isBlack and b.isBranch:
-      balanceRight(a, k, v, del(b))
+      balanceRight(a, k, v, del(b, ok))
     else:
-      newRBTree(RED, a, k, v, del(b))
-  proc del(t: RBTree[K,V]): RBTree[K,V] =
+      newNode(RED, a, k, v, del(b, ok))
+  proc del(t: Node[K,V], ok: var bool): Node[K,V] =
     if t.isEmpty:
       result = t
     elif k < t.k:
@@ -177,11 +219,18 @@ proc del*[K;V: NonVoid](t: RBTree[K,V], k: K): RBTree[K,V] =
     elif k > t.k:
       result = delformRight(t.l, t.k, t.value, t.r)
     else:
+      ok = true
       result = t.l.app(t.r)
 
-  result = del(t)
-  if result.isBranch:
-    result = newRBTree(BLACK, result.l, result.k, result.value, result.r)
+  let res = del(t, ok)
+  result = ((if res.isLeaf: res else: newNode(BLACK, res.l, res.k, res.value, res.r)), ok)
+
+proc del*[K;V: NonVoid](t: RBTree[K,V], k: K): RBTree[K,V] =
+  let res = del(t.root, k)
+  if res[1]:
+    result = newRBtree(res[0], t.length - 1)
+  else:
+    result = t
 
 proc del*[K](t: RBTree[K,void], k: K): RBTree[K,void] =
   # Same assumptions as in void version of `add`
@@ -204,7 +253,7 @@ proc mkTab(tab, s: int): string =
 const TAB_STEP = 2
     
 # TODO: It's ugly for now, need another implementation
-proc treeReprImpl[K,V](t: RBTree[K,V], tab: int): string =
+proc treeReprImpl[K,V](t: Node[K,V], tab: int): string =
   result = mkTab(tab, TAB_STEP)
   if t.isLeaf:
     result.add("[NIL]\n")
@@ -217,7 +266,7 @@ proc treeReprImpl[K,V](t: RBTree[K,V], tab: int): string =
     result.add(treeReprImpl(t.r, tab + TAB_STEP))
     
 proc treeRepr*(t: RBTree): string =
-  result = treeReprImpl(t, 0)
+  result = treeReprImpl(t.root, 0)
   result.setLen(result.len - 1)
 
 proc `$`*(n: RBTree): string = n.treeRepr
