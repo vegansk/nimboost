@@ -334,7 +334,7 @@ proc max*[K,V](t: RBTreeM[K,V]): K =
   assert n != nil
   n.k
 
-proc `==`*[K;V: NonVoid](l, r: RBTreeM[K,V]): bool =
+proc equals*[K;V: NonVoid](l, r: RBTreeM[K,V]): bool =
   var i1 = (iterator(t: RBTreeM[K,V]): (K,V))pairsC
   var i2 = (iterator(t: RBTreeM[K,V]): (K,V))pairsC
   result = true
@@ -350,7 +350,10 @@ proc `==`*[K;V: NonVoid](l, r: RBTreeM[K,V]): bool =
     if r1[0] != r2[0] or r1[1] != r2[1]:
       return false
 
-proc `==`*[K](l, r: RBTreeM[K,void]): bool =
+proc `==`*[K;V: NonVoid](l, r: RBTreeM[K,V]): bool =
+  l.equals(r)
+
+proc equals*[K](l, r: RBTreeM[K,void]): bool =
   var i1 = (iterator(t: RBTreeM[K,void]): K)rbtreem.itemsC
   var i2 = (iterator(t: RBTreeM[K,void]): K)rbtreem.itemsC
   result = true
@@ -365,6 +368,9 @@ proc `==`*[K](l, r: RBTreeM[K,void]): bool =
       return false
     if r1 != r2:
       return false
+
+proc `==`*[K](l, r: RBTreeM[K,void]): bool =
+  l.equals(r)
 
 proc bstDeleteImpl(root, pt: var Node): tuple[root: Node, deleted: Node] {.inline.} = 
   assert(not pt.isNil)

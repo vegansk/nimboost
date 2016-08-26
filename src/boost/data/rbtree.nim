@@ -94,14 +94,16 @@ proc add[K;V: NonVoid](t: Node[K,V], k: K, v: V): (Node[K,V], bool) =
       elif k > t.k:
         result = balance(t.l, t.k, t.value, ins(t.r, ok))
       else:
-        result = t
+        ok = true
+        result = newNode(BLACK, t.l, k, v, t.r)
     else:
       if k < t.k:
         result = newNode(RED, ins(t.l, ok), t.k, t.value, t.r)
       elif k > t.k:
         result = newNode(RED, t.l, t.k, t.value, ins(t.r, ok))
       else:
-        result = t
+        ok = true
+        result = newNode(RED, t.l, k, v, t.r)
   let res = ins(t, ok)
   if ok:
     result = (newNode(BLACK, res.l, res.k, res.value, res.r), ok)
@@ -285,7 +287,7 @@ iterator values*(t: RBTree): auto =
   iterateNode(t.root, next):
     yield next.value
 
-proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
+proc equals*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
   var i1 = (iterator(t: RBTree[K,V]): (K,V))pairsC
   var i2 = (iterator(t: RBTree[K,V]): (K,V))pairsC
   result = true
@@ -301,7 +303,10 @@ proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
     if r1[0] != r2[0] or r1[1] != r2[1]:
       return false
 
-proc `==`*[K](l, r: RBTree[K,void]): bool =
+proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
+  l.equals(r)
+
+proc equals*[K](l, r: RBTree[K,void]): bool =
   var i1 = (iterator(t: RBTree[K,void]): K)rbtree.itemsC
   var i2 = (iterator(t: RBTree[K,void]): K)rbtree.itemsC
   result = true
@@ -312,10 +317,14 @@ proc `==`*[K](l, r: RBTree[K,void]): bool =
     let f2 = i2.finished
     if f1 and f2:
       break
+
     elif f1 != f2:
       return false
     if r1 != r2:
       return false
+
+proc `==`*[K](l, r: RBTree[K,void]): bool =
+  l.equals(r)
 
 ####################################################################################################
 # Pretty print

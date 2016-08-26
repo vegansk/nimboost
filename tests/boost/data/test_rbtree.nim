@@ -16,6 +16,7 @@ suite "RBTree":
     let t = mkRBTree([(1, "a"), (2, "b"), (3, "c")])
     check: toSeq(t.pairs) == @[(1, "a"), (2, "b"), (3, "c")]
     check: toSeq(t.values) == @["a", "b", "c"]
+    check: t.add(1, "A").getOrDefault(1) == "A"
 
   test "Find":
     var t = newRBTree[int, string]()
