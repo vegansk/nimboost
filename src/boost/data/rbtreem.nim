@@ -313,10 +313,16 @@ proc findMax[K,V](n: Node[K,V]): Node[K,V] {.inline.} =
 proc hasKey*[K,V](t: RBTreeM[K,V], k: K): bool =
   t.root.findKey(k) != nil
 
-proc getOrDefault*[K,V: NonVoid](t: RBTreeM[K,V], k: K): V =
+proc getOrDefault*[K;V: NonVoid](t: RBTreeM[K,V], k: K): V =
   let n = t.root.findKey(k)
   if not n.isNil:
     result = n.v
+
+proc maybeGet*[K;V: NonVoid](t: RBTreeM[K,V], k: K, v: var V): bool =
+  let res = t.root.findKey(k)
+  result = not res.isNil
+  if result:
+    v = res.v
 
 proc min*[K,V](t: RBTreeM[K,V]): K =
   let n = t.root.findMin()

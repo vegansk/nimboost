@@ -19,11 +19,26 @@ suite "RBTree":
 
   test "Find":
     var t = newRBTree[int, string]()
+    var v = ""
     for i in 0..100:
       t = t.add(i, $i)
     for i in 0..100:
       check: t.hasKey(i)
       check: t.getOrDefault(i) == $i
+      check: t.maybeGet(i, v)
+      check: v == $i
+    check: not t.maybeGet(101, v)
+
+  test "Equality":
+    var t1 = mkRBTree([(1, "a"), (2, "b"), (3, "c")])
+    var t2 = mkRBTree([(3, "c"), (2, "b"), (1, "a")])
+    check: t1 == t2
+    check: t1 != t2.add(4, "d")
+
+    var t3 = mkRBSet([1, 2, 3])
+    var t4 = mkRBSet([3, 1, 2])
+    check: t3 == t4
+    check: t3 != t4.add(4)
 
   test "Delete":
     var t = newRBSet[int]()

@@ -7,7 +7,7 @@ import boost.typeclasses, boost.types, boost.data.stackm
 
 type
   Color = enum BLACK, RED 
-  Node[K,V] = ref NodeObj[K,V] not nil
+  Node[K,V] = ref NodeObj[K,V]
   NodeObj[K,V] = object
     case e: bool
     of true:
@@ -18,7 +18,7 @@ type
       when V isnot void and V isnot Unit:
         v: V
       l,r: Node[K,V]
-  RBTree*[K,V] = ref RBTreeObj[K,V] not nil
+  RBTree*[K,V] = ref RBTreeObj[K,V]
   RBTreeObj[K,V] = object
     root: Node[K,V]
     length: int
@@ -152,6 +152,12 @@ proc getOrDefault[K;V: NonVoid](t: Node[K,V], k: K): V =
 proc getOrDefault*[K;V: NonVoid](t: RBTree[K,V], k: K): V =
   t.root.getOrDefault(k)
 
+proc maybeGet*[K;V: NonVoid](t: RBTree[K,V], k: K, v: var V): bool =
+  let res = t.root.findNode(k)
+  result = res.isBranch
+  if result:
+    v = res.value
+
 proc blackToRed[K,V](t: Node[K,V]): Node[K,V] =
   assert(t.isBlack and t.isBranch, "Invariance violation")
   result = newNode(RED, t.l, t.k, t.value, t.r)
@@ -255,7 +261,11 @@ template iterateNode(n: typed, next: untyped, op: untyped): untyped =
       root = root.l
     `op`
 
-iterator items*(t: RBTree): auto =
+iterator items*[K,V](t: RBTree[K,V]): K =
+  iterateNode(t.root, next):
+    yield next.k
+
+iterator itemsC[K,V](t: RBTree[K,V]): K {.closure.} =
   iterateNode(t.root, next):
     yield next.k
 
@@ -267,9 +277,45 @@ iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): (K,V) =
   iterateNode(t.root, next):
     yield (next.k, next.v)
 
+iterator pairsC[K;V: NonVoid](t: RBTree[K,V]): (K,V) {.closure.} =
+  iterateNode(t.root, next):
+    yield (next.k, next.v)
+
 iterator values*(t: RBTree): auto =
   iterateNode(t.root, next):
     yield next.value
+
+proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
+  var i1 = (iterator(t: RBTree[K,V]): (K,V))pairsC
+  var i2 = (iterator(t: RBTree[K,V]): (K,V))pairsC
+  result = true
+  while true:
+    var r1 = i1(l)
+    var r2 = i2(r)
+    let f1 = i1.finished
+    let f2 = i2.finished
+    if f1 and f2:
+      break
+    elif f1 != f2:
+      return false
+    if r1[0] != r2[0] or r1[1] != r2[1]:
+      return false
+
+proc `==`*[K](l, r: RBTree[K,void]): bool =
+  var i1 = (iterator(t: RBTree[K,void]): K)rbtree.itemsC
+  var i2 = (iterator(t: RBTree[K,void]): K)rbtree.itemsC
+  result = true
+  while true:
+    let r1 = i1(l)
+    let r2 = i2(r)
+    let f1 = i1.finished
+    let f2 = i2.finished
+    if f1 and f2:
+      break
+    elif f1 != f2:
+      return false
+    if r1 != r2:
+      return false
 
 ####################################################################################################
 # Pretty print

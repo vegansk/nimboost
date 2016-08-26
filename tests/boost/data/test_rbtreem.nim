@@ -1,6 +1,6 @@
 import unittest, boost.data.rbtreem, sets, random, sequtils, algorithm, random
 
-suite "RBTree":
+suite "RBTreeM":
   
   test "Initialization":
     let t = newRBSetM[int]()
@@ -27,6 +27,18 @@ suite "RBTree":
       check: t.hasKey(i)
     check: t.min == 1
     check: t.max == 100
+
+  test "Find":
+    var t = newRBTreeM[int, string]()
+    var v = ""
+    for i in 0..100:
+      t.add(i, $i)
+    for i in 0..100:
+      check: t.hasKey(i)
+      check: t.getOrDefault(i) == $i
+      check: t.maybeGet(i, v)
+      check: v == $i
+    check: not t.maybeGet(101, v)
 
   test "Equality":
     var t1 = mkRBTreeM([(1, "a"), (2, "b"), (3, "c")])
