@@ -2,7 +2,7 @@ import boost.data.stackm,
        unittest
 
 suite "StackM":
-  test "StackM":
+  test "Operations":
     var s = newStackM[int]()
     s.push(1)
     check: s.len == 1

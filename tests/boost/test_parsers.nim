@@ -20,7 +20,7 @@ template checkUInt(typ: untyped, fun: untyped): untyped =
     expect(ValueError): discard fun($int64.max)
 
 suite "Parsers":
-  test "Parsers - ordinal types from string":
+  test "Ordinal types from string":
     int64.checkInt(strToInt64)
     int.checkInt(strToInt)
     int32.checkInt(strToInt32)

@@ -9,11 +9,11 @@ type
     s: string
 
 suite "Typeclasses":
-  test "Typeclasses - NonVoid":
+  test "NonVoid":
     check: void isnot NonVoid
     check: int is NonVoid
 
-  test "Typeclasses - Eq":
+  test "Eq":
     check: int is Eq
     check: string is Eq
     check: float is Eq
@@ -23,7 +23,7 @@ suite "Typeclasses":
     check: b is Eq
     check: TestObj is Eq # Objects is Eq by default
 
-  test "Typeclasses - Ord":
+  test "Ord":
     check: int is Ord
     check: string is Ord
     check: float is Ord

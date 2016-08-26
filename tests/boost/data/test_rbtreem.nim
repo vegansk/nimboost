@@ -2,7 +2,7 @@ import unittest, boost.data.rbtreem, sets, random, sequtils, algorithm, random
 
 suite "RBTree":
   
-  test "RBTreeM - initialization":
+  test "Initialization":
     let t = newRBSetM[int]()
     check: t.len == 0 
     # Value's type is void
@@ -14,7 +14,7 @@ suite "RBTree":
       inc x
     check: x == 0
 
-  test "RBTreeM - insert":
+  test "Insert":
     var t = newRBTreeM[int, string]()
     for i in 1..100:
       t.add(i, $i)
@@ -28,7 +28,7 @@ suite "RBTree":
     check: t.min == 1
     check: t.max == 100
 
-  test "RBTreeM - equality":
+  test "Equality":
     var t1 = mkRBTreeM([(1, "a"), (2, "b"), (3, "c")])
     var t2 = mkRBTreeM([(3, "c"), (2, "b"), (1, "a")])
     check: t1 == t2
@@ -39,7 +39,7 @@ suite "RBTree":
     check: t3 == t4
     check: t3 != t4.add(4)
 
-  test "RBTreeM - delete":
+  test "Delete":
     var t1 = mkRBSetM([1, 2, 3, 4, 5])
     var t2 = mkRBSetM([1, 2, 3, 4])
     check: t1.del(5) == t2
@@ -52,7 +52,7 @@ suite "RBTree":
 
   include shuffle
     
-  test "RBTreeM - stress":
+  test "Stress":
     randomize(1234)
     var t = newRBSetM[int]()
     const SIZE = 100_000

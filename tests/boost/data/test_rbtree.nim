@@ -1,10 +1,10 @@
 import unittest, boost.data.rbtree, sets, random, sequtils, algorithm, random
 
 suite "RBTree":
-  test "RBTree - initialization":
+  test "Initialization":
     let t = newRBSet[int]()
 
-  test "RBTree - insert":
+  test "Insert":
     check: newRBTree[int, string]().isLeaf
     check: newRBTree[int, string]().add(1, "a").add(2, "b").add(3, "c").isBranch
     check: newRBSet[int]().isLeaf
@@ -16,7 +16,7 @@ suite "RBTree":
     check: toSeq(t.pairs) == @[(1, "a"), (2, "b"), (3, "c")]
     check: toSeq(t.values) == @["a", "b", "c"]
 
-  test "RBTree - find":
+  test "Find":
     var t = newRBTree[int, string]()
     for i in 0..100:
       t = t.add(i, $i)
@@ -24,14 +24,14 @@ suite "RBTree":
       check: t.hasKey(i)
       check: t.getOrDefault(i) == $i
 
-  test "RBTree - delete":
+  test "Delete":
     var t = newRBSet[int]()
     for i in 1..5:
       t = t.add(i)
     for i in 1..5:
       t = t.del(i)
 
-  test "RBTree - length":
+  test "Length":
     var t = mkRBTree([(1, "a"), (2, "b"), (3, "c")])
     check: t.len == 3
     t = t.del(100)
@@ -47,7 +47,7 @@ suite "RBTree":
 
   include shuffle
 
-  test "RBTree - stress":
+  test "Stress":
     randomize(1234)
     var t = newRBSet[int]()
     const SIZE = 10_000
