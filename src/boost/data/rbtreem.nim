@@ -5,6 +5,9 @@ import boost.typeclasses
 ####################################################################################################
 # Type
 
+{.warning[SmallLshouldNotBeUsed]: off.}
+{.hint[XDeclaredButNotUsed]: off.}
+
 when defined(exportPrivate):
   type
     Color* = enum BLACK, RED

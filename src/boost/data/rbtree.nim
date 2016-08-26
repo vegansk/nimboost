@@ -3,6 +3,8 @@ import boost.typeclasses, boost.types, boost.data.stackm
 ####################################################################################################
 # Type
 
+{.warning[SmallLshouldNotBeUsed]: off.}
+
 type
   Color = enum BLACK, RED 
   Node[K,V] = ref NodeObj[K,V] not nil
@@ -53,8 +55,8 @@ proc isBranch(t: Node): bool {.inline.} = not t.isEmpty
 proc isEmpty*(t: RBTree): bool {.inline.} = t.root.isEmpty
 proc isLeaf*(t: RBTree): bool {.inline.} = t.root.isEmpty
 proc isBranch*(t: RBTree): bool {.inline.} = not t.root.isEmpty
-proc isRed(t: Node): bool {.inline.} = t.color == RED
-proc isBlack(t: Node): bool {.inline.} = t.color == BLACK
+proc isRed(t: Node): bool {.inline.} = (t.color == RED)
+proc isBlack(t: Node): bool {.inline.} = (t.color == BLACK)
 
 proc value[K;V: NonVoid](t: Node[K,V]): V {.inline.} =
   assert t.isBranch, "Can't get value of leaf"
@@ -162,7 +164,8 @@ proc balanceLeft[K,V](a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] =
   elif b.isRed and b.l.isBlack and b.l.isBranch:
     result = newNode(RED, newNode(BLACK, a, k, v, b.l.l), b.l.k, b.l.value, balance(b.l.r, b.k, b.value, b.r.blackToRed))
   else:
-    assert false
+    doAssert false
+    new result # Disable ProveInit warning
 
 proc balanceRight[K,V](a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] =
   if b.isRed:
@@ -172,7 +175,8 @@ proc balanceRight[K,V](a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] =
   elif a.isRed and a.r.isBlack and a.r.isBranch:
     result = newNode(RED, balance(a.l.blackToRed, a.k, a.value, a.r.l), a.r.k, a.r.value, newNode(BLACK, a.r.r, k, v, b))
   else:
-    assert false
+    doAssert false
+    new result # Disable ProveInit warning
 
 proc app[K,V](a, b: Node[K,V]): Node[K,V] =
   if a.isEmpty:
@@ -196,7 +200,8 @@ proc app[K,V](a, b: Node[K,V]): Node[K,V] =
   elif a.isRed:
     result = newNode(RED, a.l, a.k, a.value, app(a.r, b))
   else:
-    assert false
+    doAssert false
+    new result # Disable ProveInit warning
 
 proc del[K;V: NonVoid](t: Node[K,V], k: K): (Node[K,V], bool) =
   var ok = false

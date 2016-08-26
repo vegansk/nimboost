@@ -3,6 +3,8 @@ import unittest, boost.typeclasses, typetraits
 # Needed for the ``check`` macro pretty print
 proc `$`(t: typedesc): auto = t.name
 
+{.warning[SmallLshouldNotBeUsed]: off.}
+
 type
   TestObj = object
     i: int

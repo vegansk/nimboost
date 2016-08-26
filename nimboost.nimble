@@ -1,6 +1,6 @@
 [Package]
 name          = "nimboost"
-version       = "0.1.0"
+version       = "0.2.0"
 author        = "Anatoly Galiulin <galiulin.anatoly@gmail.com>"
 description   = "Additions to the Nim's standard library, like boost for C++"
 license       = "MIT"
@@ -8,4 +8,4 @@ license       = "MIT"
 srcDir = "src"
 
 [Deps]
-Requires: "nim >= 0.13.1"
+Requires: "nim >= 0.14.3"

@@ -3,6 +3,7 @@ import unittest, boost.data.rbtree, sets, random, sequtils, algorithm, random
 suite "RBTree":
   test "Initialization":
     let t = newRBSet[int]()
+    discard t
 
   test "Insert":
     check: newRBTree[int, string]().isLeaf
