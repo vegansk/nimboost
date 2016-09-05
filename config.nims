@@ -42,6 +42,7 @@ proc buildBase(debug: bool, bin: string, src: string, target: Target) =
   of Target.C:
     setCommand "c", src
   of Target.JS:
+    switch("d", "nodeJs")
     setCommand "js", src
 
 proc test(name: string, target: Target) =
