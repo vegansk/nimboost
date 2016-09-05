@@ -1,6 +1,6 @@
 ## The implementation of the Red-Black Tree (mutable version)
 
-import boost.typeclasses
+import boost.typeclasses, boost.data.stackm
 
 ####################################################################################################
 # Type
@@ -8,34 +8,19 @@ import boost.typeclasses
 {.warning[SmallLshouldNotBeUsed]: off.}
 {.hint[XDeclaredButNotUsed]: off.}
 
-when defined(exportPrivate):
-  type
-    Color* = enum BLACK, RED
-    Node*[K,V] = ref NodeObj[K,V]
-    NodeObj*[K,V] = object 
-      k*: K
-      when not(V is void):
-        v*: V
-        c*: Color
-        l*, r*, p*: Node[K,V]
-    RBTreeM*[K,V] = ref RBTreeObj[K,V]
-    RBTreeObj*[K,V] = object
-      root*: Node[K,V]
-      length*: int
-else:
-  type
-    Color = enum BLACK, RED
-    Node[K,V] = ref NodeObj[K,V]
-    NodeObj[K,V] = object 
-      k: K
-      when not(V is void):
-        v: V
-        c: Color
-        l, r, p: Node[K,V]
-    RBTreeM*[K,V] = ref RBTreeObj[K,V]
-    RBTreeObj[K,V] = object
-      root: Node[K,V]
-      length: int
+type
+  Color = enum BLACK, RED
+  Node[K,V] = ref NodeObj[K,V]
+  NodeObj[K,V] = object
+    k: K
+    when not(V is void):
+      v: V
+    c: Color
+    l, r, p: Node[K,V]
+  RBTreeM*[K,V] = ref RBTreeObj[K,V]
+  RBTreeObj[K,V] = object
+    root: Node[K,V]
+    length: int
 
 proc newRBTreeM*[K,V]: RBTreeM[K,V] {.inline.} =
   RBTreeM[K,V](root: nil, length: 0)
@@ -43,6 +28,7 @@ proc newRBTreeM*[K,V]: RBTreeM[K,V] {.inline.} =
 proc newRBSetM*[K]: RBTreeM[K,void] {.inline} =
   RBTreeM[K,void](root: nil, length: 0)
 
+proc isBranch(t: Node): bool {.inline.} = t != nil
 proc len*(t: RBTreeM): auto {.inline.} = t.length
 
 proc newNode[K;V: NonVoid](k: K, v: V, c: Color, l, r, p: Node[K,V] = nil): Node[K,V] {.inline.} =
@@ -72,10 +58,6 @@ template iterateNode(n: Node, next: untyped, op: untyped): untyped =
               break
             next = next.p
 
-iterator itemsC[K,V](t: RBTreeM[K,V]): K {.closure.} =
-  iterateNode(t.root, next):
-    yield next.k
-
 iterator items*[K,V](t: RBTreeM[K,V]): K =
   iterateNode(t.root, next):
     yield next.k
@@ -83,10 +65,6 @@ iterator items*[K,V](t: RBTreeM[K,V]): K =
 iterator keys*(t: RBTreeM): auto =
   iterateNode(t.root, next):
     yield next.k
-
-iterator pairsC[K;V: NonVoid](t: RBTreeM[K,V]): (K,V) {.closure.} =
-  iterateNode(t.root, next):
-    yield (next.k, next.v)
 
 iterator pairs*[K;V: NonVoid](t: RBTreeM[K,V]): (K,V) =
   iterateNode(t.root, next):
@@ -328,51 +306,27 @@ proc min*[K,V](t: RBTreeM[K,V]): K =
   let n = t.root.findMin()
   assert n != nil
   n.k
-  
+
 proc max*[K,V](t: RBTreeM[K,V]): K =
   let n = t.root.findMax()
   assert n != nil
   n.k
 
+include impl/nodeiterator
+
 proc equals*[K;V: NonVoid](l, r: RBTreeM[K,V]): bool =
-  var i1 = (iterator(t: RBTreeM[K,V]): (K,V))pairsC
-  var i2 = (iterator(t: RBTreeM[K,V]): (K,V))pairsC
-  result = true
-  while true:
-    var r1 = i1(l)
-    var r2 = i2(r)
-    let f1 = i1.finished
-    let f2 = i2.finished
-    if f1 and f2:
-      break
-    elif f1 != f2:
-      return false
-    if r1[0] != r2[0] or r1[1] != r2[1]:
-      return false
+  equalsImpl(l, r)
 
 proc `==`*[K;V: NonVoid](l, r: RBTreeM[K,V]): bool =
   l.equals(r)
 
 proc equals*[K](l, r: RBTreeM[K,void]): bool =
-  var i1 = (iterator(t: RBTreeM[K,void]): K)rbtreem.itemsC
-  var i2 = (iterator(t: RBTreeM[K,void]): K)rbtreem.itemsC
-  result = true
-  while true:
-    let r1 = i1(l)
-    let r2 = i2(r)
-    let f1 = i1.finished
-    let f2 = i2.finished
-    if f1 and f2:
-      break
-    elif f1 != f2:
-      return false
-    if r1 != r2:
-      return false
+  equalsImpl(l, r)
 
 proc `==`*[K](l, r: RBTreeM[K,void]): bool =
   l.equals(r)
 
-proc bstDeleteImpl(root, pt: var Node): tuple[root: Node, deleted: Node] {.inline.} = 
+proc bstDelete(root, pt: var Node): tuple[root: Node, deleted: Node] {.inline.} =
   assert(not pt.isNil)
 
   let haveLeft = not(pt.l.isNil)
@@ -399,11 +353,6 @@ proc bstDeleteImpl(root, pt: var Node): tuple[root: Node, deleted: Node] {.inlin
       return (n, pt)
     else:
       return (root, pt)
-
-when defined(exportPrivate):
-  proc bstDelete*(root, pt: var Node): tuple[root: Node, deleted: Node] = bstDeleteImpl(root, pt)
-else:
-  proc bstDelete(root, pt: var Node): tuple[root: Node, deleted: Node] = bstDeleteImpl(root, pt)
 
 proc succ(n: Node): Node =
   if n.isNil:
@@ -434,7 +383,7 @@ proc fixDelete(root: var Node, n: Node) {.inline.} =
         setColor(sib, BLACK)
         setColor(x.parent, RED)
         rotateLeft(root, x.parent)
-        sib = x.parent.right 
+        sib = x.parent.right
 
       if sib.left.color == BLACK and sib.right.color == BLACK:
         setColor(sib, RED)
@@ -456,8 +405,8 @@ proc fixDelete(root: var Node, n: Node) {.inline.} =
         setColor(sib, BLACK)
         setColor(x.parent, RED)
         rotateRight(root, x.parent)
-        sib = x.parent.left 
-        
+        sib = x.parent.left
+
       if sib.right.color == BLACK and sib.left.color == BLACK:
         setColor(sib, RED)
         x = x.parent
@@ -506,7 +455,7 @@ proc removeNode[K,V](root: var Node[K,V], n: Node[K,V]) =
       elif p.p.r == p:
         p.p.r = nil
       p.p = nil
-          
+
 proc del*[K,V](t: RBTreeM[K,V], k: K): RBTreeM[K,V] {.discardable.} =
   result = t
   var n = t.root.findKey(k)
@@ -514,7 +463,7 @@ proc del*[K,V](t: RBTreeM[K,V], k: K): RBTreeM[K,V] {.discardable.} =
     return
   removeNode(t.root, n)
   dec t.length
-        
+
 ####################################################################################################
 # Pretty print
 
@@ -530,7 +479,7 @@ proc mkTab(tab, s: int): string =
       result[i] = '_'
 
 const TAB_STEP = 2
-    
+
 # TODO: It's ugly for now, need another implementation
 proc treeReprImpl[K,V](n: Node[K,V], tab: int): string =
   result = mkTab(tab, TAB_STEP)
@@ -543,10 +492,9 @@ proc treeReprImpl[K,V](n: Node[K,V], tab: int): string =
       result.add("[" & $n.k & "]\n")
     result.add(treeReprImpl(n.l, tab + TAB_STEP))
     result.add(treeReprImpl(n.r, tab + TAB_STEP))
-    
+
 proc treeRepr*(t: RBTreeM): string =
   result = treeReprImpl(t.root, 0)
   result.setLen(result.len - 1)
 
 proc `$`*(n: RBTreeM): string = n.treeRepr
-  

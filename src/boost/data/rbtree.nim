@@ -6,7 +6,7 @@ import boost.typeclasses, boost.types, boost.data.stackm
 {.warning[SmallLshouldNotBeUsed]: off.}
 
 type
-  Color = enum BLACK, RED 
+  Color = enum BLACK, RED
   Node[K,V] = ref NodeObj[K,V]
   NodeObj[K,V] = object
     case e: bool
@@ -15,9 +15,9 @@ type
     else:
       k: K
       c: Color
+      l,r: Node[K,V]
       when V isnot void and V isnot Unit:
         v: V
-      l,r: Node[K,V]
   RBTree*[K,V] = ref RBTreeObj[K,V]
   RBTreeObj[K,V] = object
     root: Node[K,V]
@@ -116,7 +116,7 @@ proc add*[K;V: NonVoid](t: RBTree[K,V], k: K, v: V): RBTree[K,V] =
     result = t
   else:
     result = newRBTree(res[0], t.length + 1)
-    
+
 proc add*[K](t: RBTree[K,void], k: K): RBTree[K,void] =
   # RBTree[K,Unit] and RBTree[K,void] have the same
   # memory layout. So we use cast here
@@ -131,7 +131,7 @@ proc mkRBSet*[K](arr: openarray[K]): RBTree[K,void] =
   result = newRBSet[K]()
   for el in arr:
     result = result.add(el)
-  
+
 proc findNode[K,V](t: Node[K,V], k: K): Node[K,V] =
   if t.isLeaf or t.k == k:
     t
@@ -263,11 +263,9 @@ template iterateNode(n: typed, next: untyped, op: untyped): untyped =
       root = root.l
     `op`
 
-iterator items*[K,V](t: RBTree[K,V]): K =
-  iterateNode(t.root, next):
-    yield next.k
+include impl/nodeiterator
 
-iterator itemsC[K,V](t: RBTree[K,V]): K {.closure.} =
+iterator items*[K,V](t: RBTree[K,V]): K =
   iterateNode(t.root, next):
     yield next.k
 
@@ -279,49 +277,18 @@ iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): (K,V) =
   iterateNode(t.root, next):
     yield (next.k, next.v)
 
-iterator pairsC[K;V: NonVoid](t: RBTree[K,V]): (K,V) {.closure.} =
-  iterateNode(t.root, next):
-    yield (next.k, next.v)
-
 iterator values*(t: RBTree): auto =
   iterateNode(t.root, next):
     yield next.value
 
 proc equals*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
-  var i1 = (iterator(t: RBTree[K,V]): (K,V))pairsC
-  var i2 = (iterator(t: RBTree[K,V]): (K,V))pairsC
-  result = true
-  while true:
-    var r1 = i1(l)
-    var r2 = i2(r)
-    let f1 = i1.finished
-    let f2 = i2.finished
-    if f1 and f2:
-      break
-    elif f1 != f2:
-      return false
-    if r1[0] != r2[0] or r1[1] != r2[1]:
-      return false
+  equalsImpl(l, r)
 
 proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
   l.equals(r)
 
 proc equals*[K](l, r: RBTree[K,void]): bool =
-  var i1 = (iterator(t: RBTree[K,void]): K)rbtree.itemsC
-  var i2 = (iterator(t: RBTree[K,void]): K)rbtree.itemsC
-  result = true
-  while true:
-    let r1 = i1(l)
-    let r2 = i2(r)
-    let f1 = i1.finished
-    let f2 = i2.finished
-    if f1 and f2:
-      break
-
-    elif f1 != f2:
-      return false
-    if r1 != r2:
-      return false
+  equalsImpl(l, r)
 
 proc `==`*[K](l, r: RBTree[K,void]): bool =
   l.equals(r)
@@ -341,7 +308,7 @@ proc mkTab(tab, s: int): string =
       result[i] = '_'
 
 const TAB_STEP = 2
-    
+
 # TODO: It's ugly for now, need another implementation
 proc treeReprImpl[K,V](t: Node[K,V], tab: int): string =
   result = mkTab(tab, TAB_STEP)
@@ -354,10 +321,9 @@ proc treeReprImpl[K,V](t: Node[K,V], tab: int): string =
       result.add("[" & $t.k & "]\n")
     result.add(treeReprImpl(t.l, tab + TAB_STEP))
     result.add(treeReprImpl(t.r, tab + TAB_STEP))
-    
+
 proc treeRepr*(t: RBTree): string =
   result = treeReprImpl(t.root, 0)
   result.setLen(result.len - 1)
 
 proc `$`*(n: RBTree): string = n.treeRepr
-  

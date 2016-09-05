@@ -1,10 +1,10 @@
 import unittest, boost.data.rbtreem, sets, random, sequtils, algorithm, random
 
 suite "RBTreeM":
-  
+
   test "Initialization":
     let t = newRBSetM[int]()
-    check: t.len == 0 
+    check: t.len == 0
     # Value's type is void
     check: not compiles(toSeq(t.values()))
     # But we have keys always
@@ -63,7 +63,7 @@ suite "RBTreeM":
     check: t1.del(4).len == 0
 
   include shuffle
-    
+
   test "Stress":
     randomize(1234)
     var t = newRBSetM[int]()
