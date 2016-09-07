@@ -48,7 +48,7 @@ proc strToUInt64*(s: string): uint64 {.raises: ValueError.} =
       continue
     else:
       raise newException(ValueError, "Parse error: " & d & " cant fit into uint64")
-        
+
 proc strToUInt*(s: string): uint {.raises: ValueError.} =
   let res = strToUInt64(s)
   when sizeof(uint) != 8:
@@ -73,4 +73,3 @@ proc strToUInt8*(s: string): uint8 {.raises: ValueError.} =
   if res > uint8.max.uint64:
     raise newException(ValueError, "Overflow: " & $res & " cant fit into uint8")
   result = res.uint8
-
