@@ -65,3 +65,6 @@ task test, "Run all tests":
 
 task test_asynchttpserver, "Test asynchttpserver":
   test "io/test_asynchttpserver", Target.C
+
+task test_jester, "Test asynchttpserver":
+  test "http/test_jester", Target.C
