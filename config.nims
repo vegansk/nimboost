@@ -62,3 +62,6 @@ task test_js, "Run all tests (JS)":
 task test, "Run all tests":
   deps test_c, test_js
   setCommand "nop"
+
+task test_asynchttpserver, "Test asynchttpserver":
+  test "io/test_asynchttpserver", Target.C

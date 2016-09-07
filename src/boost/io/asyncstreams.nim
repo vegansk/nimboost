@@ -38,20 +38,48 @@ import asyncdispatch, asyncnet, asyncfile
 type
   AsyncStream* = ref AsyncStreamObj
   AsyncStreamObj* = object of RootObj ## Asychronous stream interface.
-    closeImpl*: proc (s: AsyncStream) {.gcsafe.}
-    atEndImpl*: proc (s: AsyncStream): bool {.gcsafe.}
-    setPositionImpl*: proc (s: AsyncStream; pos: int64) {.gcsafe.}
-    getPositionImpl*: proc (s: AsyncStream): int64 {.gcsafe.}
-    readImpl*: proc (s: AsyncStream; buf: pointer, size: int): Future[int] {.gcsafe, tags: [ReadIOEffect].}
-    writeImpl*: proc (s: AsyncStream; buf: pointer, size: int): Future[void] {.gcsafe, tags: [WriteIOEffect].}
-    flushImpl*: proc (s: AsyncStream): Future[void] {.gcsafe.}
+    closeImpl*: proc (s: AsyncStream) {.nimcall, tags:[], gcsafe.}
+    atEndImpl*: proc (s: AsyncStream): bool {.nimcall, tags:[], gcsafe.}
+    setPositionImpl*: proc (s: AsyncStream; pos: int64) {.nimcall, tags:[], gcsafe.}
+    getPositionImpl*: proc (s: AsyncStream): int64 {.nimcall, tags:[], gcsafe.}
+    readImpl*: proc (s: AsyncStream; buf: pointer, size: int): Future[int] {.nimcall, tags: [ReadIOEffect], gcsafe.}
+    writeImpl*: proc (s: AsyncStream; buf: pointer, size: int): Future[void] {.nimcall, tags: [WriteIOEffect], gcsafe.}
+    flushImpl*: proc (s: AsyncStream): Future[void] {.nimcall, tags:[], gcsafe.}
+
+#[
+# ``Not implemented`` stuff
+]#
+
+template atEndNotImplemented =
+  raise newException(IOError, "atEnd operation is not implemented")
+
+template setPositionNotImplemented =
+  raise newException(IOError, "setPosition operation is not implemented")
+
+template getPositionNotImplemented =
+  raise newException(IOError, "getPosition operation is not implemented")
+
+template readNotImplemented =
+  raise newException(IOError, "read operation is not implemented")
+
+template writeNotImplemented =
+  raise newException(IOError, "write operation is not implemented")
+
+template flushNotImplemented =
+  if true: # Workaround for ``Error: statement not allowed after 'return', 'break', 'raise' or 'continue'``
+    raise newException(IOError, "flush operation is not implemented")
+
+proc flushNop(s: AsyncStream) {.async.} =
+  discard
 
 #[
 # AsyncStream
 ]#
 
-proc flush*(s: AsyncStream) {.async.}=
+proc flush*(s: AsyncStream) {.async.} =
   ## Flushes the buffers of the stream ``s``.
+  if s.flushImpl.isNil:
+    flushNotImplemented
   await s.flushImpl(s)
 
 proc close*(s: AsyncStream) =
@@ -60,22 +88,32 @@ proc close*(s: AsyncStream) =
 
 proc atEnd*(s: AsyncStream): bool =
   ## Checks if all data has been read from the stream ``s``
+  if s.atEndImpl.isNil:
+    atEndNotImplemented
   s.atEndImpl(s)
 
 proc getPosition*(s: AsyncStream): int64 =
   ## Retrieves the current position in the stream ``s``
+  if s.getPositionImpl.isNil:
+    getPositionNotImplemented
   s.getPositionImpl(s)
 
 proc setPosition*(s: AsyncStream, pos: int64) =
   ## Sets the current position in the stream ``s``
+  if s.setPositionImpl.isNil:
+    setPositionNotImplemented
   s.setPositionImpl(s, pos)
 
 proc readBuffer*(s: AsyncStream, buffer: pointer, size: int): Future[int] {.async.} =
   ## Reads up to ``size`` bytes from the stream ``s`` into the ``buffer`` 
+  if s.readImpl.isNil:
+    readNotImplemented
   result = await s.readImpl(s, buffer, size)
 
 proc writeBuffer*(s: AsyncStream, buffer: pointer, size: int) {.async.} =
   ## Writes ``size`` bytes from the ``buffer`` into the stream ``s``
+  if s.writeImpl.isNil:
+    writeNotImplemented
   await s.writeImpl(s, buffer, size)
 
 proc readData*(s: AsyncStream, size: int): Future[string] {.async.} =
@@ -260,35 +298,6 @@ proc writeBool*(s: AsyncStream, data: bool) {.async.} =
   await s.writeBuffer(addr d, sizeof d)
 
 #[
-# ``Not implemented`` stuff
-]#
-
-proc setPositionNotImplemented*(s: AsyncStream; pos: int64) =
-  ## Stub for the `setPosition` operation. Useful when
-  ## implementing the stream without set position support.
-  ## Throws an exception.
-  raise newException(IOError, "setPosition operation is not implemented")
-
-proc getPositionNotImplemented*(s: AsyncStream): int64 =
-  ## Stub for the `getPosition` operation. Useful when
-  ## implementing the stream without get position support.
-  ## Throws an exception.
-  raise newException(IOError, "getPosition operation is not implemented")
-
-proc flushNotImplemented*(s: AsyncStream) {.async.} =
-  ## Stub for the `flush` operation. Useful when
-  ## implementing the stream without flush support.
-  ## Throws an exception.
-  if true: # Workaround for ``Error: statement not allowed after 'return', 'break', 'raise' or 'continue'``
-    raise newException(IOError, "flush operation is not implemented")
-
-proc flushNop*(s: AsyncStream) {.async.} =
-  ## Stub for the `flush` operation. Useful when
-  ## implementing the stream without flush support.
-  ## Does nothing.
-  discard
-
-#[
 # AsyncFileStream
 ]#
 
@@ -333,7 +342,7 @@ proc initAsyncFileStreamImpl(res: var AsyncFileStreamObj, f: AsyncFile) =
   res.getPositionImpl = fileGetPosition
   res.readImpl = cast[type(res.readImpl)](fileRead)
   res.writeImpl = cast[type(res.writeImpl)](fileWrite)
-  res.flushImpl = flushNop
+  res.flushImpl = cast[type(res.flushImpl)](flushNop)
 
 proc newAsyncFileStream*(fileName: string, mode = fmRead): AsyncStream =
   ## Creates the new AsyncFileStream from the file named ``fileName``
@@ -407,7 +416,7 @@ proc newAsyncStringStream*(data = ""): AsyncStringStream =
   result.getPositionImpl = strGetPosition
   result.readImpl = cast[type(result.readImpl)](strRead)
   result.writeImpl = cast[type(result.writeImpl)](strWrite)
-  result.flushImpl = flushNop
+  result.flushImpl = cast[type(result.flushImpl)](flushNop)
 
 #[###################################################################################################
 # AsyncSocketStream
@@ -440,11 +449,9 @@ proc initAsyncSocketStreamImpl(res: var AsyncSocketStreamObj, s: AsyncSocket) =
 
   res.closeImpl = sockClose
   res.atEndImpl = sockAtEnd
-  res.setPositionImpl = setPositionNotImplemented
-  res.getPositionImpl = getPositionNotImplemented
   res.readImpl = cast[type(res.readImpl)](sockRead)
   res.writeImpl = cast[type(res.writeImpl)](sockWrite)
-  res.flushImpl = flushNop
+  res.flushImpl = cast[type(res.flushImpl)](flushNop)
 
 proc newAsyncSocketStream*(s: AsyncSocket): AsyncStream =
   ## Creates new AsyncSocketStream from the AsyncSocket ``s``

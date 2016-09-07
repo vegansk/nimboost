@@ -16,4 +16,5 @@ else:
          data.test_rbtreem,
          data.test_rbtree
   # I/O
-  import io.test_asyncstreams
+  import io.test_asyncstreams,
+         io.test_asynchttpserver
