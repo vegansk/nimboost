@@ -18,3 +18,5 @@ else:
   # I/O
   import io.test_asyncstreams,
          io.test_asynchttpserver
+  # HTTP
+  import http.test_jester
