@@ -1,7 +1,12 @@
 import unittest, boost.limits, typetraits
 
+# Workaround for https://github.com/nim-lang/Nim/issues/4714
+when defined(js):
+  proc `$`(x: uint): string =
+    x.int64.`$`
+
 template testLimit(t: typedesc): untyped =
-    echo "Limits for ", t.name, " is [", t.min, "..", t.max, "]"
+  echo "Limits for ", t.name, " is [", t.min, "..", t.max, "]"
 
 suite "Limits":
   test "Output limits":
@@ -14,5 +19,6 @@ suite "Limits":
     uint8.testLimit
     uint16.testLimit
     uint32.testLimit
-    uint64.testLimit
+    when not defined(js):
+      uint64.testLimit
     uint.testLimit

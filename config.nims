@@ -40,6 +40,7 @@ proc buildBase(debug: bool, bin: string, src: string, target: Target) =
     
   case target
   of Target.C:
+    --threads: on
     setCommand "c", src
   of Target.JS:
     switch("d", "nodeJs")
@@ -56,7 +57,7 @@ task test_c, "Run all tests (C)":
   test "test_all", Target.C
 
 task test_js, "Run all tests (JS)":
-  test "test_js", Target.JS
+  test "test_all", Target.JS
 
 task test, "Run all tests":
   deps test_c, test_js
