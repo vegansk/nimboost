@@ -71,3 +71,6 @@ task test_jester, "Test asynchttpserver":
 
 task test_httpcommon, "Test http common utils":
   test "http/test_httpcommon", Target.C
+
+task test_props, "Test props":
+  test "data/test_props", Target.C
