@@ -1,4 +1,4 @@
-import boost.http.utils, unittest, strtabs, sequtils
+import boost.http.httpcommon, unittest, strtabs, sequtils
 
 suite "HTTP utils":
   test "URL encode/decode":

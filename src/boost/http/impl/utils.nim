@@ -6,6 +6,7 @@ from cgi import decodeUrl
 type
   MultiData* = OrderedTable[string, tuple[fields: StringTableRef, body: string]]
 
+#[
 proc parseUrlQuery*(query: string, result: var StringTableRef) =
   var i = 0
   i = query.skip("?")
@@ -20,6 +21,7 @@ proc parseUrlQuery*(query: string, result: var StringTableRef) =
     i += query.parseUntil(val, '&', i)
     inc(i) # Skip &
     result[decodeUrl(key)] = decodeUrl(val)
+]#
 
 template parseContentDisposition(): stmt =
   var hCount = 0

@@ -69,5 +69,5 @@ task test_asynchttpserver, "Test asynchttpserver":
 task test_jester, "Test asynchttpserver":
   test "http/test_jester", Target.C
 
-task test_httputils, "Test http utils":
-  test "http/test_utils", Target.C
+task test_httpcommon, "Test http common utils":
+  test "http/test_httpcommon", Target.C
