@@ -3,7 +3,7 @@
 #            Nim's Runtime Library
 #        (c) Copyright 2015 Dominik Picheta
 #
-#    See the file "copying.txt", included in this
+#    See the file "LICENSE", included in this
 #    distribution, for details about the copyright.
 #
 

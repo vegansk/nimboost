@@ -1,5 +1,5 @@
 # Copyright (C) 2012 Dominik Picheta
-# MIT License - Look at license.txt for details.
+# MIT License - Look at LICENSE for details.
 import parseutils, strtabs
 type
   NodeType* = enum

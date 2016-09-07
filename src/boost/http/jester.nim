@@ -1,12 +1,12 @@
 # Copyright (C) 2015 Dominik Picheta
-# MIT License - Look at license.txt for details.
-import boost.io.asynchttpserver, net, strtabs, re, tables, parseutils, os, strutils, uri,
+# MIT License - Look at LICENSE for details.
+import boost.http.asynchttpserver, net, strtabs, re, tables, parseutils, os, strutils, uri,
        scgi, cookies, times, mimetypes, asyncnet, asyncdispatch, macros, md5,
        logging, httpcore
 
-import private/patterns,
-       private/errorpages,
-       private/utils
+import impl/patterns,
+       impl/errorpages,
+       impl/utils
 
 from cgi import decodeData, decodeUrl, CgiError
 

@@ -1,4 +1,4 @@
-import boost.io.asynchttpserver
+import boost.http.asynchttpserver
 import unittest,
        asyncdispatch,
        threadpool,
