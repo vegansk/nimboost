@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import asyncdispatch, asyncnet, asyncfile
+import asyncdispatch, asyncnet, asyncfile, macros
 
 ## This module provides the asynchronous stream interface and some of the implementations
 ## including ``AsyncStringStream``, ``AsyncFileStream`` and ``AsyncSocketStream``.
@@ -139,6 +139,12 @@ proc readData*(s: AsyncStream, size: int): Future[string] {.async.} =
   let readed = await s.readBuffer(result.cstring, size)
   result.setLen(readed)
 
+proc peekData*(s: AsyncStream, size: int): Future[string] {.async.} =
+  ## Peeks up to the ``size`` bytes into the string from the stream ``s``
+  result = newString(size)
+  let readed = await s.peekBuffer(result.cstring, size)
+  result.setLen(readed)
+
 proc writeData*(s: AsyncStream, data: string) {.async.} =
   ## Writes ``data`` to the stream ``s``
   await s.writeBuffer(data.cstring, data.len)
@@ -170,16 +176,27 @@ proc readLine*(s: AsyncStream): Future[string] {.async.} =
     else:
       result.add(c)
 
+const PeekLineFallbackBuffLen = 4096
+
 proc peekLine*(s: AsyncStream): Future[string] {.async.} =
   ## Peeks the line from the stream ``s`` until end of stream or the new line delimeter.
   ## It works only if the stream supports peekLine operation itself or
   ## allows to get/set stream position
   if not s.peekLineImpl.isNil:
+    # Most optimized version
     result = await s.peekLineImpl(s)
   elif not s.getPositionImpl.isNil and not s.setPositionImpl.isNil:
+    # GetPos/SetPos version
     let pos = s.getPosition
     result = await s.readLine
     s.setPosition(pos)
+  elif not s.peekImpl.isNil:
+    # Fallback to read as max as possible
+    result = await s.peekData(PeekLineFallbackBuffLen)
+    for i in 0..<result.len:
+      if result[i] in {'\c', '\L', '\0'}:
+        result.setLen(i)
+        break
   else:
     peekNotImplemented
 
@@ -553,3 +570,76 @@ proc newAsyncSocketStream*(s: AsyncSocket): AsyncSocketStream =
   var res = new AsyncSocketStream
   initAsyncSocketStreamImpl(res[], s)
   result = res
+
+#[
+# AsyncBufferedStream
+]#
+
+type
+  AsyncBufferedStream* = ref AsyncBufferedStreamObj
+  AsyncBufferedStreamObj* = object of AsyncStreamObj
+    s: AsyncStream
+    buff: seq[byte]
+    length: int
+    pos: int
+
+template bufS: untyped = AsyncBufferedStream(s)
+
+proc bsClose(s: AsyncStream) =
+  bufS.s.close
+
+proc bsAnEnd(s: AsyncStream): bool =
+  bufS.pos == bufS.length and bufS.s.atEnd
+
+proc bsGetPosition(s: AsyncStream): int64 =
+  result = bufS.s.getPosition
+  if bufS.length != 0:
+    result -= bufS.length - bufS.pos
+  if result < 0:
+    result = 0
+
+proc bsSetPosition(s: AsyncStream, pos: int64) =
+  bufS.s.setPosition(pos)
+  bufS.length = 0
+  bufS.pos = 0
+
+proc bsRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
+  if bufS.length == bufS.pos:
+    bufS.length = await bufS.s.readBuffer(addr bufS.buff[0], bufS.buff.len)
+    bufS.pos = 0
+    if bufS.length == 0:
+      return
+  # Here we have something to read
+  result = min(size, bufS.length - bufS.pos)
+  copyMem(buf, addr bufS.buff[bufS.pos], result)
+  bufS.pos += result
+
+proc bsPeek(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
+  if bufS.length == bufS.pos:
+    bufS.length = await bufS.s.readBuffer(addr bufS.buff[0], bufS.buff.len)
+    bufS.pos = 0
+    if bufS.length == 0:
+      return
+  result = min(size, bufS.length - bufS.pos)
+  if result < size and bufS.pos > 0:
+    # We can move our data and read some more
+    moveMem(addr bufS.buff[0], addr bufS.buff[bufS.pos], result)
+    bufS.length = result
+    bufS.pos = 0
+    let readed = await bufS.s.readBuffer(addr bufS.buff[result], bufS.buff.len - result)
+    bufS.length += readed
+    result = min(size, bufS.length)
+  copyMem(buf, addr bufS.buff[bufS.pos], result)
+
+proc newAsyncBufferedStream*(s: AsyncStream, buffLen = 4096): AsyncBufferedStream =
+  new result
+  result.s = s
+  result.buff = newSeq[byte](buffLen)
+
+  result.closeImpl = bsClose
+  result.atEndImpl = bsAnEnd
+  result.getPositionImpl = bsGetPosition
+  result.setPositionImpl = bsSetPosition
+  result.readImpl = cast[type(result.readImpl)](bsRead)
+  result.peekImpl = cast[type(result.peekImpl)](bsPeek)
+
