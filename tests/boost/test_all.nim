@@ -5,8 +5,8 @@ when defined(js):
   # Data
   import data.test_stackm,
          data.test_rbtreem,
-         data.test_rbtree,
-         data.test_props
+         data.test_rbtree
+         #TODO: add data.test_props test when https://github.com/nim-lang/Nim/pull/4735 will be merged
 else:
   # Core
   import test_limits,

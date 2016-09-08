@@ -1,4 +1,4 @@
-import boost.http.httpcommon, unittest, strtabs, sequtils
+import boost.http.httpcommon, boost.data.props, unittest, strtabs, sequtils
 
 suite "HTTP utils":
   test "URL encode/decode":
@@ -10,8 +10,8 @@ suite "HTTP utils":
     check: "%21%40%23%24%25%5E%26%2A%28%29_%2B".urlDecode == "!@#$%^&*()_+"
 
   test "x-www-form-urlencoded encode/decode":
-    var f = newStringTable("Name", "Jonathan Doe", "Age", "23", "Formula", "a + b == 13 %!", modeCaseInsensitive)
-    let s = "Formula=a+%2B+b+%3D%3D+13+%25%21&Name=Jonathan+Doe&Age=23"
+    var f = newProps({"Name": "Jonathan Doe", "Age": "23", "Formula": "a + b == 13 %!"})
+    let s = "Name=Jonathan+Doe&Age=23&Formula=a+%2B+b+%3D%3D+13+%25%21"
     check: f.formEncode == s
     f = s.formDecode
     check: f["Name"] == "Jonathan Doe"

@@ -1,4 +1,4 @@
-import strutils, strtabs
+import strutils, strtabs, boost.data.props
 
 ## Module provides helper functions for HTTP protocol implementations
 
@@ -31,27 +31,27 @@ proc urlDecode*(s: string): string =
       result.add(ch)
     inc i
 
-proc formEncode*(f: StringTableRef): string =
-  ## Encodes ``f`` to `application/x-www-form-urlencoded` format
-  for k, v in f.pairs:
+proc formEncode*(form: Props): string =
+  ## Encodes ``form`` to `application/x-www-form-urlencoded` format
+  for k, v in form.pairs:
     let s = urlEncode(k) & "=" & urlEncode(v)
     if result.isNil:
       result = s
     else:
       result &= "&" & s
 
-proc formDecode*(s: string, f: var StringTableRef) =
-  ## Decodes ``s`` from `application/x-www-form-urlencoded` format into ``f``
-  if f.isNil:
-    f = newStringTable(modeCaseInsensitive)
+proc formDecode*(data: string, form: var Props) =
+  ## Decodes ``data`` from `application/x-www-form-urlencoded` format into ``form``
+  if form.isNil:
+    form = newProps()
   else:
-    f.clear(modeCaseInsensitive)
-  for line in s.split('&'):
+    form.clear
+  for line in data.split('&'):
     let kv = line.split('=')
     if kv.len != 2:
       raise newException(ValueError, "Malformed form data")
-    f[urlDecode(kv[0])] = urlDecode(kv[1])
+    form[urlDecode(kv[0])] = urlDecode(kv[1])
 
-proc formDecode*(s: string): StringTableRef =
-  ## Decodes ``s`` from `application/x-www-form-urlencoded` format
-  s.formDecode(result)
+proc formDecode*(data: string): Props =
+  ## Decodes ``data`` from `application/x-www-form-urlencoded` format
+  data.formDecode(result)

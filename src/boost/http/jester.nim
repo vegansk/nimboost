@@ -2,7 +2,7 @@
 # MIT License - Look at LICENSE for details.
 import boost.http.asynchttpserver, net, strtabs, re, tables, parseutils, os, strutils, uri,
        scgi, cookies, times, mimetypes, asyncnet, asyncdispatch, macros, md5,
-       logging, httpcore, boost.http.httpcommon
+       logging, httpcore, boost.http.httpcommon, boost.data.props
 
 import impl/patterns,
        impl/errorpages,
@@ -162,7 +162,7 @@ proc createReq(jes: Jester, path, body, ip: string, reqMeth: ReqMeth,
   result.headers = headers
   if result.headers.getOrDefault("Content-Type").startswith("application/x-www-form-urlencoded"):
     try:
-      formDecode(body, result.params)
+      formDecode(body).toStringTable(result.params)
     except:
       logging.warn("Could not parse URL query.")
   elif (let ct = result.headers.getOrDefault("Content-Type"); ct.startsWith("multipart/form-data")):
