@@ -43,6 +43,8 @@ type
     setPositionImpl*: proc (s: AsyncStream; pos: int64) {.nimcall, tags:[], gcsafe.}
     getPositionImpl*: proc (s: AsyncStream): int64 {.nimcall, tags:[], gcsafe.}
     readImpl*: proc (s: AsyncStream; buf: pointer, size: int): Future[int] {.nimcall, tags: [ReadIOEffect], gcsafe.}
+    peekImpl*: proc (s: AsyncStream; buf: pointer, size: int): Future[int] {.nimcall, tags: [ReadIOEffect], gcsafe.}
+    peekLineImpl*: proc (s: AsyncStream): Future[string] {.nimcall, tags: [ReadIOEffect], gcsafe.}
     writeImpl*: proc (s: AsyncStream; buf: pointer, size: int): Future[void] {.nimcall, tags: [WriteIOEffect], gcsafe.}
     flushImpl*: proc (s: AsyncStream): Future[void] {.nimcall, tags:[], gcsafe.}
 
@@ -61,6 +63,9 @@ template getPositionNotImplemented =
 
 template readNotImplemented =
   raise newException(IOError, "read operation is not implemented")
+
+template peekNotImplemented =
+  raise newException(IOError, "peek operation is not implemented")
 
 template writeNotImplemented =
   raise newException(IOError, "write operation is not implemented")
@@ -110,6 +115,13 @@ proc readBuffer*(s: AsyncStream, buffer: pointer, size: int): Future[int] {.asyn
     readNotImplemented
   result = await s.readImpl(s, buffer, size)
 
+proc peekBuffer*(s: AsyncStream, buffer: pointer, size: int): Future[int] {.async.} =
+  ## Reads up to ``size`` bytes from the stream ``s`` into the ``buffer`` without moving
+  ## stream position
+  if s.peekImpl.isNil:
+    peekNotImplemented
+  result = await s.peekImpl(s, buffer, size)
+
 proc writeBuffer*(s: AsyncStream, buffer: pointer, size: int) {.async.} =
   ## Writes ``size`` bytes from the ``buffer`` into the stream ``s``
   if s.writeImpl.isNil:
@@ -131,6 +143,11 @@ proc readChar*(s: AsyncStream): Future[char] {.async.} =
   let data = await s.readData(1)
   result = if data.len == 0: '\0' else: data[0]
 
+proc peekChar*(s: AsyncStream): Future[char] {.async.} =
+  ## Peeks the char from the stream ``s``
+  let data = await s.readData(1)
+  result = if data.len == 0: '\0' else: data[0]
+
 proc writeChar*(s: AsyncStream, c: char) {.async.} =
   ## Writes the char to the stream ``s``
   await s.writeData($c)
@@ -147,6 +164,17 @@ proc readLine*(s: AsyncStream): Future[string] {.async.} =
       break
     else:
       result.add(c)
+
+proc peekLine*(s: AsyncStream): Future[string] {.async.} =
+  ## Peeks the line from the stream ``s`` until end of stream or the new line delimeter.
+  ## It works only if the stream supports peekLine operation itself or
+  ## allows to get/set stream position
+  if not s.peekLineImpl.isNil:
+    result = await s.peekLineImpl(s)
+  else:
+    let pos = s.getPosition
+    result = await s.readLine
+    s.setPosition(pos)
 
 proc writeLine*(s: AsyncStream, data: string) {.async.} =
   ## Writes the line from the stream ``s`` followed by the new line delimeter
@@ -166,6 +194,10 @@ proc readByte*(s: AsyncStream): Future[byte] {.async.} =
   ## Reads byte from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
 
+proc peekByte*(s: AsyncStream): Future[byte] {.async.} =
+  ## Peeks byte from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
+
 proc writeByte*(s: AsyncStream, data: byte) {.async.} =
   ## Writes byte to the stream ``s``
   var d = data
@@ -174,6 +206,10 @@ proc writeByte*(s: AsyncStream, data: byte) {.async.} =
 proc readInt8*(s: AsyncStream): Future[int8] {.async.} =
   ## Reads int8 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
+
+proc peekInt8*(s: AsyncStream): Future[int8] {.async.} =
+  ## Peeks int8 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
 
 proc writeInt8*(s: AsyncStream, data: int8) {.async.} =
   ## Writes int8 to the stream ``s``
@@ -184,6 +220,10 @@ proc readInt16*(s: AsyncStream): Future[int16] {.async.} =
   ## Reads int16 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
 
+proc peekInt16*(s: AsyncStream): Future[int16] {.async.} =
+  ## Peeks int16 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
+
 proc writeInt16*(s: AsyncStream, data: int16) {.async.} =
   ## Writes int16 to the stream ``s``
   var d = data
@@ -192,6 +232,10 @@ proc writeInt16*(s: AsyncStream, data: int16) {.async.} =
 proc readInt32*(s: AsyncStream): Future[int32] {.async.} =
   ## Reads int32 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
+
+proc peekInt32*(s: AsyncStream): Future[int32] {.async.} =
+  ## Peeks int32 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
 
 proc writeInt32*(s: AsyncStream, data: int32) {.async.} =
   ## Writes int32 to the stream ``s``
@@ -202,6 +246,10 @@ proc readInt64*(s: AsyncStream): Future[int64] {.async.} =
   ## Reads int64 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
 
+proc peekInt64*(s: AsyncStream): Future[int64] {.async.} =
+  ## Peeks int64 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
+
 proc writeInt64*(s: AsyncStream, data: int64) {.async.} =
   ## Writes int64 to the stream ``s``
   var d = data
@@ -210,6 +258,10 @@ proc writeInt64*(s: AsyncStream, data: int64) {.async.} =
 proc readUInt8*(s: AsyncStream): Future[uint8] {.async.} =
   ## Reads uint8 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
+
+proc peekUInt8*(s: AsyncStream): Future[uint8] {.async.} =
+  ## Peeks uint8 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
 
 proc writeUInt8*(s: AsyncStream, data: uint8) {.async.} =
   ## Writes uint8 to the stream ``s``
@@ -220,6 +272,10 @@ proc readUInt16*(s: AsyncStream): Future[uint16] {.async.} =
   ## Reads uint16 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
 
+proc peekUInt16*(s: AsyncStream): Future[uint16] {.async.} =
+  ## Peeks uint16 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
+
 proc writeUInt16*(s: AsyncStream, data: uint16) {.async.} =
   ## Writes uint16 to the stream ``s``
   var d = data
@@ -228,6 +284,10 @@ proc writeUInt16*(s: AsyncStream, data: uint16) {.async.} =
 proc readUInt32*(s: AsyncStream): Future[uint32] {.async.} =
   ## Reads uint32 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
+
+proc peekUInt32*(s: AsyncStream): Future[uint32] {.async.} =
+  ## Peeks uint32 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
 
 proc writeUInt32*(s: AsyncStream, data: uint32) {.async.} =
   ## Writes uint32 to the stream ``s``
@@ -238,6 +298,10 @@ proc readUInt64*(s: AsyncStream): Future[uint64] {.async.} =
   ## Reads uint64 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
 
+proc peekUInt64*(s: AsyncStream): Future[uint64] {.async.} =
+  ## Peeks uint64 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
+
 proc writeUInt64*(s: AsyncStream, data: uint64) {.async.} =
   ## Writes uint64 to the stream ``s``
   var d = data
@@ -246,6 +310,10 @@ proc writeUInt64*(s: AsyncStream, data: uint64) {.async.} =
 proc readInt*(s: AsyncStream): Future[int] {.async.} =
   ## Reads int from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
+
+proc peekInt*(s: AsyncStream): Future[int] {.async.} =
+  ## Peeks int from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
 
 proc writeInt*(s: AsyncStream, data: int) {.async.} =
   ## Writes int to the stream ``s``
@@ -256,6 +324,10 @@ proc readUInt*(s: AsyncStream): Future[uint] {.async.} =
   ## Reads uint from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
 
+proc peekUInt*(s: AsyncStream): Future[uint] {.async.} =
+  ## Peeks uint from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
+
 proc writeUInt*(s: AsyncStream, data: uint) {.async.} =
   ## Writes uint to the stream ``s``
   var d = data
@@ -264,6 +336,10 @@ proc writeUInt*(s: AsyncStream, data: uint) {.async.} =
 proc readFloat32*(s: AsyncStream): Future[float32] {.async.} =
   ## Reads float32 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
+
+proc peekFloat32*(s: AsyncStream): Future[float32] {.async.} =
+  ## Peeks float32 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
 
 proc writeFloat32*(s: AsyncStream, data: float32) {.async.} =
   ## Writes float32 to the stream ``s``
@@ -274,6 +350,10 @@ proc readFloat64*(s: AsyncStream): Future[float64] {.async.} =
   ## Reads float64 from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
 
+proc peekFloat64*(s: AsyncStream): Future[float64] {.async.} =
+  ## Peeks float64 from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
+
 proc writeFloat64*(s: AsyncStream, data: float64) {.async.} =
   ## Writes float64 to the stream ``s``
   var d = data
@@ -283,6 +363,10 @@ proc readFloat*(s: AsyncStream): Future[float] {.async.} =
   ## Reads float from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
 
+proc peekFloat*(s: AsyncStream): Future[float] {.async.} =
+  ## Peeks float from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
+
 proc writeFloat*(s: AsyncStream, data: float) {.async.} =
   ## Writes float to the stream ``s``
   var d = data
@@ -291,6 +375,10 @@ proc writeFloat*(s: AsyncStream, data: float) {.async.} =
 proc readBool*(s: AsyncStream): Future[bool] {.async.} =
   ## Reads bool from the stream ``s``
   checkEof((await s.readBuffer(addr result, sizeof result)) == sizeof result)
+
+proc peekBool*(s: AsyncStream): Future[bool] {.async.} =
+  ## Peeks bool from the stream ``s``
+  checkEof((await s.peekBuffer(addr result, sizeof result)) == sizeof result)
 
 proc writeBool*(s: AsyncStream, data: bool) {.async.} =
   ## Writes bool to the stream ``s``
