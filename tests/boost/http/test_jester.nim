@@ -5,7 +5,7 @@ import boost.http.jester, asyncdispatch, strutils, random, os, asyncnet, re, thr
 const PORT = 9997.Port
 const HOST = "localhost"
 
-include run_test_server
+include impl.run_test_server
 
 suite "Jester":
   let client = newAsyncHttpClient()
