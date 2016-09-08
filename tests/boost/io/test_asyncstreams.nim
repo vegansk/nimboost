@@ -51,6 +51,14 @@ suite "asyncstreams":
       check: not s.atEnd
       discard await s.readLine
       check: s.atEnd
+
+      # File doesn't implement neither peekBuffer nor peekLine operations.
+      # But it allows get/set position operation. So this must work
+      s.setPosition(0)
+      let l1 = await s.peekLine
+      let l2 = await s.readLine
+      check: l1 == l2
+
       fname.removeFile
     waitFor doTest()
 
@@ -80,6 +88,13 @@ suite "asyncstreams":
       s.setPosition(0)
       let line = await s.readLine
       check: line == "Hello, world!"
+
+      # String doesn't implement neither peekBuffer nor peekLine operations.
+      # But it allows get/set position operation. So this must work
+      s.setPosition(0)
+      let l1 = await s.peekLine
+      let l2 = await s.readLine
+      check: l1 == l2
 
       s.setPosition(0)
       let all = await s.readAll

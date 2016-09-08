@@ -176,10 +176,12 @@ proc peekLine*(s: AsyncStream): Future[string] {.async.} =
   ## allows to get/set stream position
   if not s.peekLineImpl.isNil:
     result = await s.peekLineImpl(s)
-  else:
+  elif not s.getPositionImpl.isNil and not s.setPositionImpl.isNil:
     let pos = s.getPosition
     result = await s.readLine
     s.setPosition(pos)
+  else:
+    peekNotImplemented
 
 proc writeLine*(s: AsyncStream, data: string) {.async.} =
   ## Writes the line from the stream ``s`` followed by the new line delimeter
