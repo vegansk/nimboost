@@ -2,8 +2,9 @@
 
 import boost.typeclasses, boost.data.stackm
 
-####################################################################################################
+#[
 # Type
+]#
 
 {.warning[SmallLshouldNotBeUsed]: off.}
 {.hint[XDeclaredButNotUsed]: off.}
@@ -82,8 +83,9 @@ iterator mvalues*[K,V](t: var RBTreeM[K,V]): var V =
   iterateNode(t.root, next):
     yield next.v
 
-####################################################################################################
+#[
 # Implementation based on http://www.geeksforgeeks.org/red-black-tree-set-1-introduction-2/
+]#
 
 proc isLeftChild(n: Node): bool {.inline.} =
   not(n.isNil) and not(n.p.isNil) and n.p.l == n
@@ -464,8 +466,9 @@ proc del*[K,V](t: RBTreeM[K,V], k: K): RBTreeM[K,V] {.discardable.} =
   removeNode(t.root, n)
   dec t.length
 
-####################################################################################################
+#[
 # Pretty print
+]#
 
 proc mkTab(tab, s: int): string =
   if tab == 0:

@@ -1,7 +1,8 @@
 import boost.typeclasses, boost.types, boost.data.stackm
 
-####################################################################################################
+#[
 # Type
+]#
 
 {.warning[SmallLshouldNotBeUsed]: off.}
 
@@ -293,8 +294,9 @@ proc equals*[K](l, r: RBTree[K,void]): bool =
 proc `==`*[K](l, r: RBTree[K,void]): bool =
   l.equals(r)
 
-####################################################################################################
+#[
 # Pretty print
+]#
 
 proc mkTab(tab, s: int): string =
   if tab == 0:

@@ -63,6 +63,34 @@ task test, "Run all tests":
   deps test_c, test_js
   setCommand "nop"
 
+task docs, "Build documentation":
+  mkDir "docs"
+  const modules = [
+    "limits.nim",
+    "parsers.nim",
+    "typeclasses.nim",
+    "types.nim",
+
+    "data/props.nim",
+    "data/rbtree.nim",
+    "data/rbtreem.nim",
+    "data/stackm.nim",
+
+    "io/asyncstreams.nim",
+
+    "http/asynchttpserver.nim",
+    "http/jester.nim",
+    "http/httpcommon.nim",
+    "http/multipart.nim",
+  ]
+
+  for m in modules:
+    let (d, f, _) = m.splitFile
+    let dir = "docs" / "boost" / d
+    if not dirExists(dir):
+      mkDir(dir)
+    exec "nim doc --out:" & joinPath(dir, f & ".html") & " " & joinPath("src", "boost", m)
+
 task test_asynchttpserver, "Test asynchttpserver":
   test "io/test_asynchttpserver", Target.C
 
