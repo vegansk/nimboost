@@ -74,3 +74,6 @@ task test_httpcommon, "Test http common utils":
 
 task test_props, "Test props":
   test "data/test_props", Target.C
+
+task test_multipart, "Test multipart":
+  test "http/test_multipart", Target.C

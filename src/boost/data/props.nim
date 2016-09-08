@@ -28,7 +28,7 @@ proc `[]`*(p: Props, name: string): string =
       return v
   return ""
 
-proc add*(p: var Props; n, v: string, overwrite = false, splitter = ", "): var Props {.discardable.} =
+proc add*(p: var Props; n, v: string, overwrite = false, delimiter = ","): var Props {.discardable.} =
   result = p
   for idx in 0..<p.len:
     var el = getMVar(p, idx)
@@ -36,7 +36,7 @@ proc add*(p: var Props; n, v: string, overwrite = false, splitter = ", "): var P
       if overwrite:
         el.value = v
       else:
-        el.value = el.value & splitter & v
+        el.value = el.value & delimiter & v
       return
   ((seq[Prop])p).add(prop(n, v))
 
@@ -48,10 +48,10 @@ proc contains*(p: Props, name: string): bool =
     if n.cmpIgnoreCase(name) == 0:
       return true
 
-proc newProps*(vals: varargs[tuple[name: string, value: string]], overwrite = false, splitter = ", "): Props =
+proc newProps*(vals: varargs[tuple[name: string, value: string]], overwrite = false, delimiter = ","): Props =
   result = (Props)newSeq[Prop]()
   for el in vals:
-    result.add(el.name, el.value, overwrite, splitter)
+    result.add(el.name, el.value, overwrite, delimiter)
 
 proc toSeq*(p: Props): seq[(string, string)] =
   result = newSeq[(string, string)](p.len)
