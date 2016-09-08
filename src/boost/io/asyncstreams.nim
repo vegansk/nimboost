@@ -119,7 +119,12 @@ proc peekBuffer*(s: AsyncStream, buffer: pointer, size: int): Future[int] {.asyn
   ## Reads up to ``size`` bytes from the stream ``s`` into the ``buffer`` without moving
   ## stream position
   if s.peekImpl.isNil:
-    peekNotImplemented
+    if not s.getPositionImpl.isNil and not s.setPositionImpl.isNil:
+      let pos = s.getPosition
+      result = await s.readBuffer(buffer, size)
+      s.setPosition(pos)
+    else:
+      peekNotImplemented
   result = await s.peekImpl(s, buffer, size)
 
 proc writeBuffer*(s: AsyncStream, buffer: pointer, size: int) {.async.} =
@@ -390,8 +395,8 @@ proc writeBool*(s: AsyncStream, data: bool) {.async.} =
 ]#
 
 type
-  AsyncFileStream = ref AsyncFileStreamObj
-  AsyncFileStreamObj = object of AsyncStreamObj
+  AsyncFileStream* = ref AsyncFileStreamObj
+  AsyncFileStreamObj* = object of AsyncStreamObj
     f: AsyncFile
     eof: bool
     closed: bool
@@ -439,19 +444,19 @@ proc newAsyncFileStream*(fileName: string, mode = fmRead): AsyncStream =
   initAsyncFileStreamImpl(res[], openAsync(fileName, mode))
   result = res
 
-proc newAsyncFileStream*(f: AsyncFile): AsyncStream =
+proc newAsyncFileStream*(f: AsyncFile): AsyncFileStream =
   ## Creates the new AsyncFileStream from the AsyncFile ``f``.
   var res = new AsyncFileStream
   initAsyncFileStreamImpl(res[], f)
   result = res
 
-#[###################################################################################################
+#[
 # AsyncStringStream
 ]#
 
 type
   AsyncStringStream* = ref AsyncStringStreamObj
-  AsyncStringStreamObj = object of AsyncStreamObj
+  AsyncStringStreamObj* = object of AsyncStreamObj
     data: string
     pos: int
     eof: bool
@@ -506,13 +511,13 @@ proc newAsyncStringStream*(data = ""): AsyncStringStream =
   result.writeImpl = cast[type(result.writeImpl)](strWrite)
   result.flushImpl = cast[type(result.flushImpl)](flushNop)
 
-#[###################################################################################################
+#[
 # AsyncSocketStream
 ]#
 
 type
-  AsyncSocketStream = ref AsyncSocketStreamObj
-  AsyncSocketStreamObj = object of AsyncStreamObj
+  AsyncSocketStream* = ref AsyncSocketStreamObj
+  AsyncSocketStreamObj* = object of AsyncStreamObj
     s: AsyncSocket
     closed: bool
 
@@ -541,9 +546,8 @@ proc initAsyncSocketStreamImpl(res: var AsyncSocketStreamObj, s: AsyncSocket) =
   res.writeImpl = cast[type(res.writeImpl)](sockWrite)
   res.flushImpl = cast[type(res.flushImpl)](flushNop)
 
-proc newAsyncSocketStream*(s: AsyncSocket): AsyncStream =
+proc newAsyncSocketStream*(s: AsyncSocket): AsyncSocketStream =
   ## Creates new AsyncSocketStream from the AsyncSocket ``s``
   var res = new AsyncSocketStream
   initAsyncSocketStreamImpl(res[], s)
   result = res
-
