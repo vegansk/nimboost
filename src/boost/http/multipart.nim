@@ -7,7 +7,9 @@ import ./httpcommon,
        ../io/asyncstreams,
        strutils,
        ../data/props,
-       ../data/memory
+       ../data/memory,
+       strtabs,
+       tables
 
 type
   MultiPartMessage* = ref object

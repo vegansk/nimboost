@@ -1,3 +1,5 @@
+from boost.http.asynchttpserver import readAll
+
 proc runSocketServer =
   proc run {.gcsafe.} =
     settings:
@@ -67,7 +69,8 @@ proc runSocketServer =
 
       post "/post":
         body.add "Received: <br/>"
-        body.add($request.formData)
+        let fd = await request.formData.toMultiData
+        body.add($fd)
         body.add "<br/>\n"
         body.add($request.params)
 
@@ -96,7 +99,8 @@ proc runSocketServer =
 
       patch "/patch":
         body.add "Received: "
-        body.add($request.body)
+        let b = await request.body.readAll
+        body.add($b)
         status = Http200
 
     runForever()

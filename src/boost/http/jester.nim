@@ -1,12 +1,12 @@
 # Copyright (C) 2015 Dominik Picheta
 # MIT License - Look at LICENSE for details.
-import boost.http.asynchttpserver, net, strtabs, re, tables, parseutils, os, strutils, uri,
+import ./asynchttpserver, net, strtabs, re, tables, parseutils, os, strutils, uri,
        scgi, cookies, times, mimetypes, asyncnet, asyncdispatch, macros, md5,
-       logging, httpcore, boost.http.httpcommon, boost.data.props
+       logging, httpcore, ./httpcommon, ../data/props, ../io/asyncstreams, ./multipart
 
-import impl/patterns,
-       impl/errorpages,
-       impl/utils
+import ./impl/patterns,
+       ./impl/errorpages,
+       ./impl/utils
 
 from cgi import decodeData, decodeUrl, CgiError
 
@@ -15,6 +15,7 @@ export tables
 export HttpCode
 export NodeType # TODO: Couldn't bindsym this.
 export MultiData
+export RequestBody
 
 type
   Jester = object
@@ -37,12 +38,12 @@ type
                                   ## query string.
     matches*: array[MaxSubpatterns, string] ## Matches if this is a regex
                                             ## pattern.
-    body*: string                 ## Body of the request, only for POST.
+    body*: RequestBody            ## Body of the request, only for POST.
                                   ## You're probably looking for ``formData``
                                   ## instead.
     headers*: HttpHeaders         ## Headers received with the request.
                                   ## Retrieving these is case insensitive.
-    formData*: MultiData          ## Form data; only present for
+    formData*: MultiPartMessage   ## Form data; only present for
                                   ## multipart/form-data
     port*: int
     host*: string
@@ -82,6 +83,21 @@ type
   TReqMeth: ReqMeth, TCallbackAction: CallbackAction, TCallback: Callback].}
 
 const jesterVer = "0.1.0"
+
+type
+  MultiData* = OrderedTable[string, tuple[fields: StringTableRef, body: string]]
+
+proc toMultiData*(mp: MultiPartMessage): Future[MultiData] {.async.} =
+  ## Converts ``mp`` into the old jester's 
+  result = initOrderedTable[string, tuple[fields: StringTableRef, body: string]]()
+  while true:
+    let p = await mp.readNextPart
+    if mp.atEnd:
+      break
+    let name = p.contentDisposition.name
+    let fields = p.headers.asStringTable
+    let body = await p.getPartDataStream.readAll
+    result.add(name, (fields, body))
 
 proc createHeaders(status: string, headers: StringTableRef): string =
   result = ""
@@ -153,20 +169,22 @@ proc stripAppName(path, appName: string): string =
           "Expected script name at beginning of path. Got path: " &
            path & " script name: " & slashAppName)
 
-proc createReq(jes: Jester, path, body, ip: string, reqMeth: ReqMeth,
-               headers: HttpHeaders, params: StringTableRef): Request =
+proc createReq(jes: Jester, path: string, body: RequestBody, ip: string, reqMeth: ReqMeth,
+               headers: HttpHeaders, params: StringTableRef): Future[Request] {.async.} =
   new(result)
   result.params = params
   result.body = body
   result.appName = jes.settings.appName
   result.headers = headers
   if result.headers.getOrDefault("Content-Type").startswith("application/x-www-form-urlencoded"):
+    let b = await body.getStream.readAll
     try:
-      formDecode(body).toStringTable(result.params)
+      formDecode(b).toStringTable(result.params)
     except:
       logging.warn("Could not parse URL query.")
   elif (let ct = result.headers.getOrDefault("Content-Type"); ct.startsWith("multipart/form-data")):
-    result.formData = parseMPFD(ct, body)
+    let mp = MultiPartMessage.open(body.getStream, ct.parseContentType)
+    result.formData = mp
   if (let p = result.headers.getOrDefault("SERVER_PORT"); p != ""):
     result.port = p.parseInt
   else:
@@ -239,7 +257,7 @@ proc parseReqMethod(reqMethod: string, output: var ReqMeth): bool =
 
 template setMatches(req: expr) = req.matches = matches # Workaround.
 proc handleRequest(jes: Jester, client: AsyncSocket,
-                   path, query, body, ip, reqMethod: string,
+                   path, query: string, body: RequestBody, ip, reqMethod: string,
                    headers: HttpHeaders) {.async.} =
   var params = {:}.newStringTable()
   try:
@@ -258,7 +276,7 @@ proc handleRequest(jes: Jester, client: AsyncSocket,
 
   var req: Request
   try:
-    req = createReq(jes, path, body, ip, parsedReqMethod, headers, params)
+    req = await createReq(jes, path, body, ip, parsedReqMethod, headers, params)
   except ValueError:
     client.close()
     return
@@ -307,7 +325,7 @@ proc handleRequest(jes: Jester, client: AsyncSocket,
 
 proc handleHTTPRequest(jes: Jester, req: asynchttpserver.Request): Future[void] =
   result = handleRequest(jes, req.client, req.url.path, req.url.query,
-                      req.body, req.hostname, req.reqMethod, req.headers)
+                      req.reqBody, req.hostname, req.reqMethod, req.headers)
 
 proc newSettings*(port = Port(5000), staticDir = getCurrentDir() / "public",
                   appName = "", bindAddr = ""): Settings =

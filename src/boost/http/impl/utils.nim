@@ -21,6 +21,7 @@ proc parseUrlQuery*(query: string, result: var StringTableRef) =
     i += query.parseUntil(val, '&', i)
     inc(i) # Skip &
     result[decodeUrl(key)] = decodeUrl(val)
+
 ]#
 
 template parseContentDisposition(): stmt =
@@ -87,6 +88,7 @@ proc parseMultiPart*(body: string, boundary: string): MultiData =
 
     result.add(name, newPart)
 
+
 proc parseMPFD*(contentType: string, body: string): MultiData =
   var boundaryEqIndex = contentType.find("boundary=")+9
   var boundary = contentType.substr(boundaryEqIndex, contentType.len()-1)
@@ -99,4 +101,3 @@ when isMainModule:
   var r = {:}.newStringTable
   parseUrlQuery("FirstName=Mickey", r)
   echo r
-

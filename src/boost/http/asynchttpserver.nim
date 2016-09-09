@@ -66,16 +66,16 @@ proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
 
 proc len*(body: RequestBody): auto = body.length
 
-proc readAll*(body: RequestBody): string =
+proc readAll*(body: RequestBody): Future[string] {.async.} =
   if body.data.isNil and not body.s.isNil:
-    body.data = waitFor body.s.readData(body.len.int)
+    body.data = await body.s.readData(body.len.int)
   result = body.data
 
 proc body*(request: Request): string =
   if request.reqBody.isNil:
     ""
   else:
-    request.reqBody.readAll
+    waitFor request.reqBody.readAll
 
 type
   RequestBodyStream = ref RequestBodyStreamObj
