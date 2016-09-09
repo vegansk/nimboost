@@ -588,6 +588,77 @@ proc newAsyncSocketStream*(s: AsyncSocket): AsyncSocketStream =
   result = res
 
 #[
+# AsyncStreamWrapper
+]#
+
+template wrapAsyncStream*(T: typedesc[AsyncStream], streamFieldName: untyped): untyped =
+  ## Copies all the operations of stream ``result.streamFieldName`` to
+  ## the stream of type ``T``. ``result`` of the calling context must
+  ## point to the stream of type ``T``.
+  ##
+  ## The example of wrapping ``AsyncStringStream``:
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##   type
+  ##     WS = ref WSObj
+  ##     WSObj = object of AsyncStreamObj
+  ##       wrappedStream: AsyncStream
+  ##
+  ##   proc newWS(s: AsyncStream): WS =
+  ##     new result
+  ##     result.wrappedStream = s
+  ##     wrapAsyncStream(WS, wrappedStream)
+
+  proc ws(s: AsyncStream): AsyncStream {.inject, inline.} =
+    result = ((T)s).streamFieldName
+
+  if not ws(result).closeImpl.isNil:
+    proc wsClose(s: AsyncStream) =
+      ws(s).closeImpl(ws(s))
+    result.closeImpl = wsClose
+
+  if not ws(result).atEndImpl.isNil:
+    proc wsAtEnd(s: AsyncStream): bool =
+      ws(s).atEndImpl(ws(s))
+    result.atEndImpl = wsAtEnd
+
+  if not ws(result).setPositionImpl.isNil:
+    proc wsSetPosition(s: AsyncStream, pos: int64) =
+      ws(s).setPositionImpl(ws(s), pos)
+    result.setPositionImpl = wsSetPosition
+
+  if not ws(result).getPositionImpl.isNil:
+    proc wsGetPosition(s: AsyncStream): int64 =
+      ws(s).getPositionImpl(ws(s))
+    result.getPositionImpl = wsGetPosition
+
+  if not ws(result).readImpl.isNil:
+    proc wsRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
+      result = await ws(s).readImpl(ws(s), buf, size)
+    result.readImpl = cast[type(result.readImpl)](wsRead)
+
+  if not ws(result).peekImpl.isNil:
+    proc wsPeek(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
+      result = await ws(s).peekImpl(ws(s), buf, size)
+    result.peekImpl = cast[type(result.peekImpl)](wsPeek)
+
+  if not ws(result).peekLineImpl.isNil:
+    proc wsPeekLine(s: AsyncStream): Future[string] {.async.} =
+      result = await ws(s).peekLineImpl(ws(s))
+    result.peekLineImpl = cast[type(result.peekLineImpl)](wsPeekLine)
+
+  if not ws(result).writeImpl.isNil:
+    proc wsWrite(s: AsyncStream, buf: pointer, size: int) {.async.} =
+      await ws(s).writeImpl(ws(s), buf, size)
+    result.writeImpl = cast[type(result.writeImpl)](wsWrite)
+
+  if not ws(result).flushImpl.isNil:
+    proc wsFlush(s: AsyncStream) {.async.} =
+      await ws(s).flushImpl(ws(s))
+    result.flushImpl = cast[type(result.flushImpl)](wsFlush)
+
+#[
 # AsyncBufferedStream
 ]#
 
@@ -613,9 +684,6 @@ type
     pos: int
 
 template bufS: untyped = AsyncBufferedStream(s)
-
-proc bsClose(s: AsyncStream) =
-  bufS.s.close
 
 proc bsAnEnd(s: AsyncStream): bool =
   bufS.pos == bufS.length and bufS.s.atEnd
@@ -665,7 +733,9 @@ proc newAsyncBufferedStream*(s: AsyncStream, buffLen = 4096): AsyncBufferedStrea
   result.s = s
   result.buff = newSeq[byte](buffLen)
 
-  result.closeImpl = bsClose
+  wrapAsyncStream(AsyncBufferedStream, s)
+  doAssert(ws(result) == s)
+
   result.atEndImpl = bsAnEnd
   result.getPositionImpl = bsGetPosition
   result.setPositionImpl = bsSetPosition

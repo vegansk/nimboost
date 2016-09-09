@@ -63,17 +63,33 @@ suite "asyncstreams":
       fname.removeFile
     waitFor doTest()
 
+  proc doAsyncStringStreamTest(s: AsyncStream) {.async.} =
+    await s.writeLine("Hello, world!")
+    await s.flush
+    s.setPosition(0)
+    let pline = await s.peekLine
+    let line = await s.readLine
+    check: line == pline
+    check: line == "Hello, world!"
+    check: not s.atEnd
+    discard await s.readLine
+    check: s.atEnd
+
   test "AsyncStringStream":
-    proc doTest {.async.} =
-      let s = newAsyncStringStream()
-      await s.writeLine("Hello, world!")
-      s.setPosition(0)
-      let line = await s.readLine
-      check: line == "Hello, world!"
-      check: not s.atEnd
-      discard await s.readLine
-      check: s.atEnd
-    waitFor doTest()
+    waitFor doAsyncStringStreamTest(newAsyncStringStream())
+
+  test "AsyncStreamWrapper":
+    type
+      WS = ref WSObj
+      WSObj = object of AsyncStreamObj
+        s: AsyncStream
+
+    proc newWS(s: AsyncStream): WS =
+      new result
+      result.s = s
+      wrapAsyncStream(WS, s)
+
+    waitFor doAsyncStringStreamTest(newWS(newAsyncStringStream()))
 
   test "Operations":
     proc doTest {.async.} =
