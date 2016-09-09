@@ -35,7 +35,7 @@ suite "Multipart":
     check: not mp.atEnd
 
     var part = waitFor mp.readNextPart
-    check: not part.isNil
+    require: not part.isNil
     check: not mp.atEnd
     check: part.headers.toSeq == @{
       "Content-Disposition": "form-data;name=\"text\"",
@@ -44,10 +44,10 @@ suite "Multipart":
     check: part.encoding == "8bit"
     var ps = part.getPartDataStream()
     var data = waitFor ps.readAll
-    check: data == "text default\c\L"
+    check: data == "text default"
 
     part = waitFor mp.readNextPart
-    check: not part.isNil
+    require: not part.isNil
     check: not mp.atEnd
     check: part.headers.toSeq == @{
       "Content-Disposition": "form-data; name=\"file1\"; filename=\"a.txt\"",
@@ -55,10 +55,10 @@ suite "Multipart":
     }
     ps = part.getPartDataStream()
     data = waitFor ps.readAll
-    check: data == "Content of a.txt.\c\L"
+    check: data == "Content of a.txt."
 
     part = waitFor mp.readNextPart
-    check: not part.isNil
+    require: not part.isNil
     check: not mp.atEnd
     check: part.headers.toSeq == @{
       "Content-Disposition": "form-data; name=\"file2\"; filename=\"a.html\"",
@@ -66,7 +66,7 @@ suite "Multipart":
     }
     ps = part.getPartDataStream()
     data = waitFor ps.readAll
-    check: data == "<!DOCTYPE html><title>Content of a.html.</title>\c\L"
+    check: data == "<!DOCTYPE html><title>Content of a.html.</title>"
 
     part = waitFor mp.readNextPart
     check: mp.atEnd

@@ -77,7 +77,7 @@ proc eopRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
     #TODO: Throw UnexpectedEndOfFile?
     es.eop = true
     return 0
-  var boundary = es.p.msg.boundary
+  var boundary = "\c\L" & es.p.msg.boundary
   let (pos, length) = findInMem(buf, bytes, addr boundary[0], boundary.len)
   if pos == -1:
     # End of part was not found
@@ -86,8 +86,10 @@ proc eopRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
     result = await es.s.readBuffer(buf, pos)
     let tb = await es.peekData(boundary.len + 2)
     if tb == boundary & "\c\L":
+      discard await es.s.readData(2)
       es.eop = true
     elif tb == boundary & "--" and (await es.peekData(boundary.len + 4)) == boundary & "--\c\L":
+      discard await es.s.readData(2)
       es.eop = true
       es.p.msg.finished = true
 
