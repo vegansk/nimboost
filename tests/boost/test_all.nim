@@ -16,7 +16,8 @@ else:
   import data.test_stackm,
          data.test_rbtreem,
          data.test_rbtree,
-         data.test_props
+         data.test_props,
+         data.test_memory
   # I/O
   import io.test_asyncstreams
   # HTTP

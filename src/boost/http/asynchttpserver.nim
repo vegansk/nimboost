@@ -25,7 +25,7 @@
 ##
 ##    waitFor server.serve(Port(8080), cb)
 
-import tables, asyncnet, asyncdispatch, parseutils, uri, strutils, boost.io.asyncstreams
+import tables, asyncnet, asyncdispatch, parseutils, uri, strutils, ../boost/io/asyncstreams
 import httpcore
 
 export httpcore except parseHeader

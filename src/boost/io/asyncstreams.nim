@@ -728,13 +728,12 @@ proc bsPeek(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
     result = min(size, bufS.length)
   copyMem(buf, addr bufS.buff[bufS.pos], result)
 
-proc newAsyncBufferedStream*(s: AsyncStream, buffLen = 4096): AsyncBufferedStream =
+proc newAsyncBufferedStream*(s: AsyncStream, buff: seq[byte]): AsyncBufferedStream =
   new result
   result.s = s
-  result.buff = newSeq[byte](buffLen)
+  result.buff = buff
 
   wrapAsyncStream(AsyncBufferedStream, s)
-  doAssert(ws(result) == s)
 
   result.atEndImpl = bsAnEnd
   result.getPositionImpl = bsGetPosition
@@ -742,3 +741,5 @@ proc newAsyncBufferedStream*(s: AsyncStream, buffLen = 4096): AsyncBufferedStrea
   result.readImpl = cast[type(result.readImpl)](bsRead)
   result.peekImpl = cast[type(result.peekImpl)](bsPeek)
 
+proc newAsyncBufferedStream*(s: AsyncStream, buffLen = 4096): AsyncBufferedStream =
+  newAsyncBufferedStream(s, newSeq[byte](buffLen))

@@ -1,4 +1,4 @@
-import strutils, strtabs, boost.data.props, parseutils, asyncdispatch, boost.io.asyncstreams
+import strutils, strtabs, ../data/props, parseutils, asyncdispatch, ../io/asyncstreams
 
 ## Module provides helper functions for HTTP protocol implementations
 

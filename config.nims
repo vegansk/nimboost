@@ -112,3 +112,6 @@ task test_asyncstreams_no_net, "Test asyncstreams without networking":
 
 task test_multipart, "Test multipart":
   test "http/test_multipart", Target.C
+
+task test_memory, "Test memory":
+  test "data/test_memory", Target.C
