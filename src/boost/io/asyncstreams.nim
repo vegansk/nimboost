@@ -13,6 +13,7 @@ import asyncdispatch, asyncnet, asyncfile, macros
 ## including ``AsyncStringStream``, ``AsyncFileStream`` and ``AsyncSocketStream``.
 ##
 ## If you want to implement your own asynchronous stream, you must provide the
+
 ## implementations of the streams operations as defined in ``AsyncStreamObj``.
 ## Also, you can use some helpers for the absent operations, like ``setPositionNotImplemented``,
 ## ``flushNop``, etc.
@@ -37,7 +38,20 @@ import asyncdispatch, asyncnet, asyncfile, macros
 
 type
   AsyncStream* = ref AsyncStreamObj
-  AsyncStreamObj* = object of RootObj ## Asychronous stream interface.
+    ## Reference to the asynchronous stream.
+  AsyncStreamObj* = object of RootObj
+    ## Asychronous stream interface. Implementation details:
+    ##
+    ## * ``setPositionImpl`` can be nil, if the stream doesn't support ``setPosition``.
+    ## * ``getPositionImpl`` can be nil, if the stream doesn't support ``getPosition``.
+    ## * ``peekImpl`` can be nil, if the stream doesn't support ``peekBuffer``. In that case,
+    ##   this operation can be emulated via ``getPosition`` and ``setPosition`` by the module
+    ##   itself.
+    ## * ``peekLineImpl`` is the optimized version for ``peekLine`` operation. If it's nil,
+    ##   then module tries to emulate ``peekLine`` if it's possible via:
+    ##   * ``getPostion``, ``setPosition`` and ``readLine``
+    ##   * ``peekBuffer`` with fixed size buffer.
+    ## * if ``flushImpl`` is nil, ``flush`` operation does nothing.
     closeImpl*: proc (s: AsyncStream) {.nimcall, tags:[], gcsafe.}
     atEndImpl*: proc (s: AsyncStream): bool {.nimcall, tags:[], gcsafe.}
     setPositionImpl*: proc (s: AsyncStream; pos: int64) {.nimcall, tags:[], gcsafe.}
@@ -70,10 +84,6 @@ template peekNotImplemented =
 template writeNotImplemented =
   raise newException(IOError, "write operation is not implemented")
 
-template flushNotImplemented =
-  if true: # Workaround for ``Error: statement not allowed after 'return', 'break', 'raise' or 'continue'``
-    raise newException(IOError, "flush operation is not implemented")
-
 proc flushNop(s: AsyncStream) {.async.} =
   discard
 
@@ -84,7 +94,7 @@ proc flushNop(s: AsyncStream) {.async.} =
 proc flush*(s: AsyncStream) {.async.} =
   ## Flushes the buffers of the stream ``s``.
   if s.flushImpl.isNil:
-    flushNotImplemented
+    await flushNop(s)
   await s.flushImpl(s)
 
 proc close*(s: AsyncStream) =
@@ -415,7 +425,9 @@ proc writeBool*(s: AsyncStream, data: bool) {.async.} =
 
 type
   AsyncFileStream* = ref AsyncFileStreamObj
+    ## Reference to the asynchronous file stream.
   AsyncFileStreamObj* = object of AsyncStreamObj
+    ## Asynchronous file stream.
     f: AsyncFile
     eof: bool
     closed: bool
@@ -475,7 +487,9 @@ proc newAsyncFileStream*(f: AsyncFile): AsyncFileStream =
 
 type
   AsyncStringStream* = ref AsyncStringStreamObj
+    ## Reference to the asynchronous string stream.
   AsyncStringStreamObj* = object of AsyncStreamObj
+    ## Asynchronous string stream.
     data: string
     pos: int
     eof: bool
@@ -536,7 +550,9 @@ proc newAsyncStringStream*(data = ""): AsyncStringStream =
 
 type
   AsyncSocketStream* = ref AsyncSocketStreamObj
+    ## Reference to the asynchronous socket stream.
   AsyncSocketStreamObj* = object of AsyncStreamObj
+    ## Asynchronous socket stream.
     s: AsyncSocket
     closed: bool
 
@@ -577,7 +593,20 @@ proc newAsyncSocketStream*(s: AsyncSocket): AsyncSocketStream =
 
 type
   AsyncBufferedStream* = ref AsyncBufferedStreamObj
+    ## Reference to the asynchronous buffered stream.
   AsyncBufferedStreamObj* = object of AsyncStreamObj
+    ## Asynchronous buffered stream. Adds ``peekBuffer`` operation to the streams
+    ## that doesn't support it. For example:
+    ##
+    ## .. code-block:: Nim
+    ##
+    ##   var s: AsyncSocketStream
+    ##   # This will throw the exception:
+    ##   var data = s.peekData(100)
+    ##
+    ##   var bs = newAsyncBufferedStream(s)
+    ##   # And this won't
+    ##   data = bs.peekData(100)
     s: AsyncStream
     buff: seq[byte]
     length: int
