@@ -1,6 +1,6 @@
 srcdir = "src"
 
-import ospaths
+import ospaths, strutils
 
 type Target {.pure.} = enum JS, C
 
@@ -53,6 +53,16 @@ proc test(name: string, target: Target) =
   let fName = name.splitPath[1]
   buildBase true, joinPath("bin", fName), joinPath("tests/boost", name), target
 
+proc getVersion: string =
+  const PREFIX = "version: \""
+  for line in (staticExec "nimble dump").splitLines:
+    if line.startsWith(PREFIX):
+      return line[PREFIX.len..^2]
+  quit "Can't read version from project's configuration"
+
+task version, "Show project version":
+  echo getVersion()
+
 task test_c, "Run all tests (C)":
   test "test_all", Target.C
 
@@ -64,7 +74,7 @@ task test, "Run all tests":
   setCommand "nop"
 
 task docs, "Build documentation":
-  mkDir "docs"
+  mkDir "docs" / getVersion()
   const modules = [
     "limits.nim",
     "parsers.nim",
@@ -86,7 +96,7 @@ task docs, "Build documentation":
 
   for m in modules:
     let (d, f, _) = m.splitFile
-    let dir = "docs" / "boost" / d
+    let dir = "docs" / getVersion() / "boost" / d
     if not dirExists(dir):
       mkDir(dir)
     exec "nim doc --out:" & joinPath(dir, f & ".html") & " " & joinPath("src", "boost", m)
