@@ -2,4 +2,4 @@
 
 [![Build Status](https://travis-ci.org/vegansk/nimboost.svg?branch=master)](https://travis-ci.org/vegansk/nimboost)
 
-Additions to the Nim's standard library, like boost for C++ :-)
+Additions to the Nim's standard library, like boost for C++ :-). The documentation can be found [here](http://vegansk.github.io/nimboost/).
