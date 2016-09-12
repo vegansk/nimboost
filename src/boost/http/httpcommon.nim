@@ -98,11 +98,13 @@ proc parseCHeader(value: string): (string, seq[(string, string)]) =
 
 type
   ContentType* = object
+    ## Structure describing `Content-Type` header
     mimeType*: string
     charset*: string
     boundary*: string
 
 proc parseContentType*(value: string): ContentType =
+  ## Parses the ``value`` of `Content-Type` header
   let (mt, rest) = value.parseCHeader
   result.mimeType = mt
   for h in rest:
@@ -113,6 +115,7 @@ proc parseContentType*(value: string): ContentType =
       result.boundary = h[1]
 
 proc `$`*(ct: ContentType): string =
+  ## Forms the `Content-Type` value
   result = ct.mimeType
   if ct.charset.len > 0:
     result &= "; charset=" & ct.charset
@@ -121,12 +124,14 @@ proc `$`*(ct: ContentType): string =
 
 type
   ContentDisposition* = object
+    ## Structure describing `Content-Disposition` header
     disposition*: string
     name*: string
     filename*: string
     size*: int64
 
 proc parseContentDisposition*(value: string): ContentDisposition =
+  ## Parses the ``value`` of `Content-Disposition` header
   result.size = -1
   let (d, rest) = value.parseCHeader
   result.disposition = d
@@ -140,6 +145,7 @@ proc parseContentDisposition*(value: string): ContentDisposition =
       result.size = h[1].parseBiggestInt
 
 proc `$`*(cd: ContentDisposition): string =
+  ## Forms the `Content-Disposition` value
   result = cd.disposition
   if cd.name.len > 0:
     result &= "; name=" & cd.name

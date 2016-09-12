@@ -1,4 +1,5 @@
-from boost.http.asynchttpserver import readAll
+from boost.http.asynchttpserver import RequestBody, getStream
+from boost.io.asyncstreams import readAll
 
 proc runSocketServer =
   proc run {.gcsafe.} =
@@ -54,7 +55,7 @@ proc runSocketServer =
         resp "blah"
 
       get "/error":
-        proc blah = raise newException(ESynch, "BLAH BLAH BLAH")
+        proc blah = raise newException(Exception, "BLAH BLAH BLAH")
         blah()
 
       get "/live":
@@ -99,7 +100,7 @@ proc runSocketServer =
 
       patch "/patch":
         body.add "Received: "
-        let b = await request.body.readAll
+        let b: string = await request.body.getStream.readAll
         body.add($b)
         status = Http200
 

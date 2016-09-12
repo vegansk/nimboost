@@ -13,11 +13,13 @@ import ./httpcommon,
 
 type
   MultiPartMessage* = ref object
+    ## The multipart message
     s: AsyncStream
     ct: ContentType
     finished: bool
     boundary: string
   MessagePart* = ref object
+    ## The body part of the multipart message
     msg: MultiPartMessage
     h: Props
     ct: ContentType
@@ -34,6 +36,9 @@ proc open*(t: typedesc[MultiPartMessage], s: AsyncStream, contentType: ContentTy
   MultiPartMessage(s: newAsyncBufferedStream(s), ct: contentType, boundary: "--" & contentType.boundary)
 
 proc atEnd*(m: MultiPartMessage): bool =
+  ## Checks if there is no more body parts in the message ``m``.
+  ## This can be detected only after the call of ``readNextPart`` that
+  ## returned ``nil``.
   m.finished
 
 proc readNextPart*(m: MultiPartMessage): Future[MessagePart] {.async.} =
@@ -109,6 +114,7 @@ proc newEndOfPartStream(p: MessagePart): EndOfPartStream =
   result.atEndImpl = eopAtEnd
 
 proc getPartDataStream*(p: MessagePart): AsyncStream =
+  ## Returns the body part as asynchronous stream.
   if p.isNil or p.msg.finished:
     raise newException(IOError, "Can't read multipart data, it's finished!")
   newEndOfPartStream(p)

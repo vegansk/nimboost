@@ -121,7 +121,7 @@ task docs, "Build documentation":
   writeFile "index.html", index_html(genIndex())
 
 task test_asynchttpserver, "Test asynchttpserver":
-  test "io/test_asynchttpserver", Target.C
+  test "http/test_asynchttpserver", Target.C
 
 task test_jester, "Test asynchttpserver":
   test "http/test_jester", Target.C

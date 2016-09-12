@@ -37,6 +37,7 @@ export httpcore except parseHeader
 # the proc.
 type
   RequestBody* = ref object
+    ## The request body implemented as asynchronous stream
     s: AsyncStream
     length: int64
     data: string
@@ -64,18 +65,9 @@ proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
   result.reuseAddr = reuseAddr
   result.reusePort = reusePort
 
-proc len*(body: RequestBody): auto = body.length
-
-proc readAll*(body: RequestBody): Future[string] {.async.} =
-  if body.data.isNil and not body.s.isNil:
-    body.data = await body.s.readData(body.len.int)
-  result = body.data
-
-proc body*(request: Request): string =
-  if request.reqBody.isNil:
-    ""
-  else:
-    waitFor request.reqBody.readAll
+proc len*(body: RequestBody): int64 =
+  ## Returns the length of the body
+  body.length
 
 type
   RequestBodyStream = ref RequestBodyStreamObj
@@ -93,6 +85,7 @@ proc rbReadData(s: AsyncStream, buff: pointer, buffLen: int): Future[int] {.asyn
   ss.pos += result
 
 proc getStream*(body: RequestBody): AsyncStream =
+  ## Returns the request's body as asynchronous stream
   if not body.data.isNil:
     result = newAsyncStringStream(body.data)
   else:
@@ -105,6 +98,17 @@ proc getStream*(body: RequestBody): AsyncStream =
     rb.readImpl = cast[type(rb.readImpl)](rbReadData)
 
     result = rb
+
+proc body*(request: Request): Future[string] {.async.} =
+  ## Returns the body of the request as the string.
+  ## ``reqBody.getStream``
+  if request.reqBody.isNil:
+    result = ""
+  elif request.reqBody.data.isNil:
+    request.reqBody.data = await request.reqBody.getStream.readAll
+    result = request.reqBody.data
+  else:
+    result = request.reqBody.data
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:

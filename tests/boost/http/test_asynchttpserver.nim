@@ -31,7 +31,8 @@ proc serverThread =
       if req.url.path == "/count":
         await processBigData(req)
       else:
-        await req.respond(Http200, req.body)
+        let body = await req.body
+        await req.respond(Http200, body)
     else:
       await req.respond(Http404, "Not found")
 
