@@ -1,6 +1,6 @@
 srcdir = "src"
 
-import ospaths, strutils
+import ospaths, strutils, sequtils
 
 type Target {.pure.} = enum JS, C
 
@@ -73,6 +73,23 @@ task test, "Run all tests":
   deps test_c, test_js
   setCommand "nop"
 
+import ./utils/index_html
+
+proc listFilesRec(dir: string): seq[string] =
+  result = newSeq[string]()
+  withDir dir:
+    result.add(".".listFiles.mapIt(it.splitPath[1]))
+    for d in ".".listDirs:
+      if d == "impl": continue
+      result.add(listFilesRec(d).mapIt(d.splitPath[1] / it))
+
+proc genIndex: auto =
+  result = newSeq[(string, seq[string])]()
+  withDir "docs":
+    for d in ".".listDirs:
+      result.add((d.splitPath[1], listFilesRec(d)))
+  echo result
+
 task docs, "Build documentation":
   mkDir "docs" / getVersion()
   const modules = [
@@ -100,6 +117,8 @@ task docs, "Build documentation":
     if not dirExists(dir):
       mkDir(dir)
     exec "nim doc --out:" & joinPath(dir, f & ".html") & " " & joinPath("src", "boost", m)
+
+  writeFile "index.html", index_html(genIndex())
 
 task test_asynchttpserver, "Test asynchttpserver":
   test "io/test_asynchttpserver", Target.C
