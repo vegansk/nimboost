@@ -34,7 +34,7 @@ suite "HTTP utils":
     check: $ct == "multipart/form-data; boundary=something"
 
   test "Content-Disposition":
-    var cd = "attachment;filename=genome.jpeg;modification-date=\"Wed, 12 Feb 1997 16:29:51 -0500\";".parseContentDisposition
+    var cd = "attachment;filename=\"genome.jpeg\";modification-date=\"Wed, 12 Feb 1997 16:29:51 -0500\";".parseContentDisposition
     check: cd.disposition == "attachment"
     check: cd.filename == "genome.jpeg"
 

@@ -132,17 +132,35 @@ type
 
 proc parseContentDisposition*(value: string): ContentDisposition =
   ## Parses the ``value`` of `Content-Disposition` header
+
+  proc quotedString(s: string): string =
+    if s.len < 2 or s[0] != '"' or s[^1] != '"':
+      raise newException(ValueError, "Malformed Content-Disposition")
+    s[1..^2]
+
+  proc token(s: string): string =
+    if s.len < 1:
+      raise newException(ValueError, "Malformed Content-Disposition")
+    s
+
+  proc extValue(s: string): string =
+    if s.len > 0 and s[0] == '"':
+      quotedString(s)
+    else:
+      token(s)
+
   result.size = -1
   let (d, rest) = value.parseCHeader
   result.disposition = d
   for h in rest:
     case h[0]
     of "name":
-      result.name = h[1]
+      result.name = extValue(h[1])
     of "filename":
-      result.filename = h[1]
+      # filename MUST be quoted
+      result.filename = quotedString(h[1])
     of "size":
-      result.size = h[1].parseBiggestInt
+      result.size = extValue(h[1]).parseBiggestInt
 
 proc `$`*(cd: ContentDisposition): string =
   ## Forms the `Content-Disposition` value
