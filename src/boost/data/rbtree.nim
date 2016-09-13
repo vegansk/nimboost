@@ -1,4 +1,7 @@
-import boost.typeclasses, boost.types, boost.data.stackm
+## Immutable red-black tree. Can be used to implement data structures like `map`
+## or `set`.
+
+import ../typeclasses, ../types, ./stackm
 
 #[
 # Type
@@ -20,6 +23,7 @@ type
       when V isnot void and V isnot Unit:
         v: V
   RBTree*[K,V] = ref RBTreeObj[K,V]
+    ## Red-black tree. ``V`` can be `void`
   RBTreeObj[K,V] = object
     root: Node[K,V]
     length: int
@@ -27,17 +31,24 @@ type
 proc newNode[K,V](): Node[K,V] =
   Node[K,V](e: true)
 
-proc newNode[K](c: Color, l: Node[K,Unit], k: K, v: Unit, r: Node[K,Unit]): Node[K,Unit] {.inline.} =
+proc newNode[K](c: Color, l: Node[K,Unit], k: K, v: Unit,
+                r: Node[K,Unit]): Node[K,Unit] {.inline.} =
   Node[K,Unit](k: k, c: c, l: l, r: r)
-proc newNode[K;V: NonVoid](c: Color, l: Node[K,V], k: K, v: V, r: Node[K,V]): Node[K,V] {.inline.} =
+proc newNode[K;V: NonVoid](c: Color, l: Node[K,V], k: K, v: V,
+                           r: Node[K,V]): Node[K,V] {.inline.} =
   Node[K,V](k: k, v: v, c: c, l: l, r: r)
-proc newNode[K](c: Color, l: Node[K,void], k: K, r: Node[K,void]): Node[K,void] {.inline.} =
+proc newNode[K](c: Color, l: Node[K,void], k: K,
+                r: Node[K,void]): Node[K,void] {.inline.} =
   Node[K,void](k: k, c: c, l: l, r: r)
 
 proc newRBTree*[K;V: NonVoid](): RBTree[K,V] =
+  ## Creates empty immutable red-black tree with keys of type ``K`` and
+  ## values of type ``V``
   RBTree[K,V](root: newNode[K,V](), length: 0)
 
 proc newRBSet*[K](): RBTree[K,void] =
+  ## Creates empty immutable red-black tree with keys of type ``K`` and
+  ## without values
   RBTree[K,void](root: newNode[K,void](), length: 0)
 
 proc newRBTree[K,V](root: Node[K,V], length: int): RBTree[K,V] =
@@ -53,9 +64,11 @@ proc color(t: Node): Color {.inline.} =
 proc isEmpty(t: Node): bool {.inline.} = t.e
 proc isLeaf(t: Node): bool {.inline.} = t.isEmpty
 proc isBranch(t: Node): bool {.inline.} = not t.isEmpty
-proc isEmpty*(t: RBTree): bool {.inline.} = t.root.isEmpty
-proc isLeaf*(t: RBTree): bool {.inline.} = t.root.isEmpty
-proc isBranch*(t: RBTree): bool {.inline.} = not t.root.isEmpty
+proc isEmpty*(t: RBTree): bool {.inline.} =
+  ## Checks if the tree ``t`` is empty.
+  t.root.isEmpty
+proc isLeaf(t: RBTree): bool {.inline.} = t.root.isEmpty
+proc isBranch(t: RBTree): bool {.inline.} = not t.root.isEmpty
 proc isRed(t: Node): bool {.inline.} = (t.color == RED)
 proc isBlack(t: Node): bool {.inline.} = (t.color == BLACK)
 
@@ -67,19 +80,25 @@ proc value[K;V: NonVoid](t: Node[K,V]): V {.inline.} =
     t.v
 
 proc len*(t: RBTree): int =
+  ## Returns the number of elements in the tree
   t.length
 
 proc balance[K,V](a: Node[K,V], k: K, v: V, b: Node[K,V]): Node[K,V] {.inline.} =
   if a.isRed and b.isRed:
-    result = newNode(RED, newNode(BLACK, a.l, a.k, a.value, a.r), k, v, newNode(BLACK, b.l, b.k, b.value, b.r))
+    result = newNode(RED, newNode(BLACK, a.l, a.k, a.value, a.r), k, v,
+                     newNode(BLACK, b.l, b.k, b.value, b.r))
   elif a.isRed and a.l.isRed:
-    result = newNode(RED, newNode(BLACK, a.l.l, a.l.k, a.l.value, a.l.r), a.k, a.value, newNode(BLACK, a.r, k, v, b))
+    result = newNode(RED, newNode(BLACK, a.l.l, a.l.k, a.l.value, a.l.r), a.k,
+                     a.value, newNode(BLACK, a.r, k, v, b))
   elif a.isRed and a.r.isRed:
-    result = newNode(RED, newNode(BLACK, a.l, a.k, a.value, a.r.l), a.r.k, a.r.value, newNode(BLACK, a.r.r, k, v, b))
+    result = newNode(RED, newNode(BLACK, a.l, a.k, a.value, a.r.l), a.r.k,
+                     a.r.value, newNode(BLACK, a.r.r, k, v, b))
   elif b.isRed and b.r.isRed:
-    result = newNode(RED, newNode(BLACK, a, k, v, b.l), b.k, b.value, newNode(BLACK, b.r.l, b.r.k, b.r.value, b.r.r))
+    result = newNode(RED, newNode(BLACK, a, k, v, b.l), b.k, b.value,
+                     newNode(BLACK, b.r.l, b.r.k, b.r.value, b.r.r))
   elif b.isRed and b.l.isRed:
-    result = newNode(RED, newNode(BLACK, a, k, v, b.l.l), b.l.k, b.l.value, newNode(BLACK, b.l.r, b.k, b.value, b.r))
+    result = newNode(RED, newNode(BLACK, a, k, v, b.l.l), b.l.k, b.l.value,
+                     newNode(BLACK, b.l.r, b.k, b.value, b.r))
   else:
     result = newNode(BLACK, a, k, v, b)
 
@@ -112,6 +131,7 @@ proc add[K;V: NonVoid](t: Node[K,V], k: K, v: V): (Node[K,V], bool) =
     result = (t, ok)
 
 proc add*[K;V: NonVoid](t: RBTree[K,V], k: K, v: V): RBTree[K,V] =
+  ## Returns the new tree from ``t`` where key ``k`` is set to value ``v``.
   let res = add(t.root, k, v)
   if not res[1]:
     result = t
@@ -119,16 +139,19 @@ proc add*[K;V: NonVoid](t: RBTree[K,V], k: K, v: V): RBTree[K,V] =
     result = newRBTree(res[0], t.length + 1)
 
 proc add*[K](t: RBTree[K,void], k: K): RBTree[K,void] =
+  ## Returns the new set from ``t`` where ``k`` is present.
   # RBTree[K,Unit] and RBTree[K,void] have the same
   # memory layout. So we use cast here
   cast[RBTree[K,void]](add(cast[RBTree[K,Unit]](t), k, ()))
 
 proc mkRBTree*[K;V: NonVoid](arr: openarray[(K,V)]): RBTree[K,V] =
+  ## Creates new tree from the key/value pairs ``arr``.
   result = newRBTree[K,V]()
   for el in arr:
     result = result.add(el[0], el[1])
 
 proc mkRBSet*[K](arr: openarray[K]): RBTree[K,void] =
+  ## Creates new set from the values ``arr``.
   result = newRBSet[K]()
   for el in arr:
     result = result.add(el)
@@ -145,6 +168,7 @@ proc hasKey[K,V](t: Node[K,V], k: K): bool =
   not t.findNode(k).isLeaf
 
 proc hasKey*[K,V](t: RBTree[K,V], k: K): bool =
+  ## Checks if the tree ``t`` has the key ``k``.
   t.root.hasKey(k)
 
 proc getOrDefault[K;V: NonVoid](t: Node[K,V], k: K): V =
@@ -153,9 +177,12 @@ proc getOrDefault[K;V: NonVoid](t: Node[K,V], k: K): V =
     result = res.value
 
 proc getOrDefault*[K;V: NonVoid](t: RBTree[K,V], k: K): V =
+  ## Returns the value associated with the key ``k`` or `V()`.
   t.root.getOrDefault(k)
 
 proc maybeGet*[K;V: NonVoid](t: RBTree[K,V], k: K, v: var V): bool =
+  ## Puts the value associated with the key ``k`` into ``v`` and returns
+  ## `true`. If the key is absent, returns `false`.
   let res = t.root.findNode(k)
   result = res.isBranch
   if result:
@@ -240,6 +267,7 @@ proc del[K;V: NonVoid](t: Node[K,V], k: K): (Node[K,V], bool) =
   result = ((if res.isLeaf: res else: newNode(BLACK, res.l, res.k, res.value, res.r)), ok)
 
 proc del*[K;V: NonVoid](t: RBTree[K,V], k: K): RBTree[K,V] =
+  ## Returns the new tree from ``t`` where the key ``k`` is unset.
   let res = del(t.root, k)
   if res[1]:
     result = newRBtree(res[0], t.length - 1)
@@ -247,6 +275,7 @@ proc del*[K;V: NonVoid](t: RBTree[K,V], k: K): RBTree[K,V] =
     result = t
 
 proc del*[K](t: RBTree[K,void], k: K): RBTree[K,void] =
+  ## Returns the new tree from ``t`` where the key ``k`` is unset.
   # Same assumptions as in void version of `add`
   cast[RBTree[K,void]](del(cast[RBTree[K,Unit]](t), k))
 
@@ -267,31 +296,39 @@ template iterateNode(n: typed, next: untyped, op: untyped): untyped =
 include impl/nodeiterator
 
 iterator items*[K,V](t: RBTree[K,V]): K =
+  ## Iterates over the keys of the tree ``t``.
   iterateNode(t.root, next):
     yield next.k
 
 iterator keys*(t: RBTree): auto =
+  ## Iterates over the keys of the tree ``t``.
   iterateNode(t.root, next):
     yield next.k
 
 iterator pairs*[K;V: NonVoid](t: RBTree[K,V]): (K,V) =
+  ## Iterates over the key/value pairs of the tree ``t``.
   iterateNode(t.root, next):
     yield (next.k, next.v)
 
 iterator values*(t: RBTree): auto =
+  ## Iterates over the values of the tree ``t``.
   iterateNode(t.root, next):
     yield next.value
 
 proc equals*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
+  ## Checks for the equality of ``l`` and ``r``.
   equalsImpl(l, r)
 
 proc `==`*[K;V: NonVoid](l, r: RBTree[K,V]): bool =
+  ## Checks for the equality of ``l`` and ``r``.
   l.equals(r)
 
 proc equals*[K](l, r: RBTree[K,void]): bool =
+  ## Checks for the equality of ``l`` and ``r``.
   equalsImpl(l, r)
 
 proc `==`*[K](l, r: RBTree[K,void]): bool =
+  ## Checks for the equality of ``l`` and ``r``.
   l.equals(r)
 
 #[
@@ -325,7 +362,10 @@ proc treeReprImpl[K,V](t: Node[K,V], tab: int): string =
     result.add(treeReprImpl(t.r, tab + TAB_STEP))
 
 proc treeRepr*(t: RBTree): string =
+  ## Converts tree ``t`` to string.
   result = treeReprImpl(t.root, 0)
   result.setLen(result.len - 1)
 
-proc `$`*(n: RBTree): string = n.treeRepr
+proc `$`*(t: RBTree): string =
+  ## Converts tree ``t`` to string.
+  t.treeRepr

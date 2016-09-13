@@ -6,10 +6,10 @@ suite "RBTree":
     discard t
 
   test "Insert":
-    check: newRBTree[int, string]().isLeaf
-    check: newRBTree[int, string]().add(1, "a").add(2, "b").add(3, "c").isBranch
-    check: newRBSet[int]().isLeaf
-    check: newRBSet[int]().add(1).add(2).add(3).isBranch
+    check: newRBTree[int, string]().len == 0
+    check: newRBTree[int, string]().add(1, "a").add(2, "b").add(3, "c").len == 3
+    check: newRBSet[int]().len == 0
+    check: newRBSet[int]().add(1).add(2).add(3).len == 3
 
     check: toSeq(mkRBSet([1, 2, 3]).items) == @[1, 2, 3]
     check: toSeq(mkRBSet([1, 2, 3]).keys) == @[1, 2, 3]

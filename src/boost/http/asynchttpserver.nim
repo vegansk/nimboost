@@ -101,7 +101,6 @@ proc getStream*(body: RequestBody): AsyncStream =
 
 proc body*(request: Request): Future[string] {.async.} =
   ## Returns the body of the request as the string.
-  ## ``reqBody.getStream``
   if request.reqBody.isNil:
     result = ""
   elif request.reqBody.data.isNil:
