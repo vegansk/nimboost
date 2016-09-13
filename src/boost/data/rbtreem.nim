@@ -1,6 +1,7 @@
-## The implementation of the Red-Black Tree (mutable version)
+## Mutable red-black tree. Can be used to implement data structures like `map`
+## or `set`.
 
-import boost.typeclasses, boost.data.stackm
+import ../typeclasses, ./stackm
 
 #[
 # Type
@@ -19,23 +20,37 @@ type
     c: Color
     l, r, p: Node[K,V]
   RBTreeM*[K,V] = ref RBTreeObj[K,V]
+    ## Red-black tree. ``V`` can be `void`
   RBTreeObj[K,V] = object
     root: Node[K,V]
     length: int
 
 proc newRBTreeM*[K,V]: RBTreeM[K,V] {.inline.} =
+  ## Creates empty mutable red-black tree with keys of type ``K`` and
+  ## values of type ``V``
   RBTreeM[K,V](root: nil, length: 0)
 
 proc newRBSetM*[K]: RBTreeM[K,void] {.inline} =
+  ## Creates empty mutable red-black tree with keys of type ``K`` and
+  ## without values
   RBTreeM[K,void](root: nil, length: 0)
 
 proc isBranch(t: Node): bool {.inline.} = t != nil
-proc len*(t: RBTreeM): auto {.inline.} = t.length
 
-proc newNode[K;V: NonVoid](k: K, v: V, c: Color, l, r, p: Node[K,V] = nil): Node[K,V] {.inline.} =
+proc isEmpty*(t: RBTreeM): bool {.inline.} =
+  ## Checks if the tree ``t`` is empty.
+  t.root.isNil
+
+proc len*(t: RBTreeM): int {.inline.} =
+  ## Returns the number of elements in the tree
+  t.length
+
+proc newNode[K;V: NonVoid](k: K, v: V, c: Color,
+                           l, r, p: Node[K,V] = nil): Node[K,V] {.inline.} =
   Node[K,V](k: k, v: v, c: c, l: l, r: r, p: p)
 
-proc newNode[K](k: K, c: Color, l, r, p: Node[K,void] = nil): Node[K,void] {.inline.} =
+proc newNode[K](k: K, c: Color,
+                l, r, p: Node[K,void] = nil): Node[K,void] {.inline.} =
   Node[K,void](k: k, c: c, l: l, r: r, p: p)
 
 template iterateNode(n: Node, next: untyped, op: untyped): untyped =
@@ -60,26 +75,34 @@ template iterateNode(n: Node, next: untyped, op: untyped): untyped =
             next = next.p
 
 iterator items*[K,V](t: RBTreeM[K,V]): K =
+  ## Iterates over the keys of the tree ``t``.
   iterateNode(t.root, next):
     yield next.k
 
 iterator keys*(t: RBTreeM): auto =
+  ## Iterates over the keys of the tree ``t``.
   iterateNode(t.root, next):
     yield next.k
 
 iterator pairs*[K;V: NonVoid](t: RBTreeM[K,V]): (K,V) =
+  ## Iterates over the key/value pairs of the tree ``t``.
   iterateNode(t.root, next):
     yield (next.k, next.v)
 
 iterator mpairs*[K;V: NonVoid](t: var RBTreeM[K,V]): (K, var V) =
+  ## Iterates over the key/value pairs of the tree ``t``
+  ## where value is mutable.
   iterateNode(t.root, next):
     yield (next.k, next.v)
 
 iterator values*(t: RBTreeM): auto =
+  ## Iterates over the values of the tree ``t``.
   iterateNode(t.root, next):
     yield next.v
 
 iterator mvalues*[K,V](t: var RBTreeM[K,V]): var V =
+  ## Iterates over the values of the tree ``t``
+  ## where value is mutable.
   iterateNode(t.root, next):
     yield next.v
 
@@ -142,7 +165,7 @@ proc right(n: Node): Node {.inline.} =
   if n.isNil: nil else: n.r
 
 proc bstInsert(root, pt: var Node): tuple[root: Node, inserted: bool] =
-  ## Returns new root and the flag: true for insert, false for update
+  # Returns new root and the flag: true for insert, false for update
   if root.isNil:
     return (pt, true)
   var curr = root
@@ -236,6 +259,7 @@ proc fixInsert(root, pt: var Node) =
   root.c = BLACK
 
 proc add*[K;V: NonVoid](t: RBTreeM[K,V], k: K, v: V): RBTreeM[K,V] {.discardable.} =
+  ## Sets the key ``k`` to the value ``v`` in the tree ``t``. Returns ``t``.
   var pt = newNode(k, v, RED)
   var (newRoot, ok) = bstInsert(t.root, pt)
   t.root = newRoot
@@ -245,6 +269,7 @@ proc add*[K;V: NonVoid](t: RBTreeM[K,V], k: K, v: V): RBTreeM[K,V] {.discardable
   result = t
 
 proc add*[K](t: RBTreeM[K,void], k: K): RBTreeM[K,void] {.discardable.} =
+  ## Sets the value ``k`` in the set ``t``. Returns ``t``.
   var pt = newNode(k, RED)
   var (newRoot, ok) = bstInsert(t.root, pt)
   t.root = newRoot
@@ -254,11 +279,13 @@ proc add*[K](t: RBTreeM[K,void], k: K): RBTreeM[K,void] {.discardable.} =
   result = t
 
 proc mkRBTreeM*[K;V: NonVoid](arr: openarray[(K,V)]): RBTreeM[K,V] =
+  ## Creates new tree from the key/value pairs ``arr``.
   result = newRBTreeM[K,V]()
   for el in arr:
     result.add(el[0], el[1])
 
 proc mkRBSetM*[K](arr: openarray[K]): RBTreeM[K,void] =
+  ## Creates new set from the values ``arr``.
   result = newRBSetM[K]()
   for el in arr:
     result.add(el)
@@ -291,25 +318,31 @@ proc findMax[K,V](n: Node[K,V]): Node[K,V] {.inline.} =
   return curr
 
 proc hasKey*[K,V](t: RBTreeM[K,V], k: K): bool =
+  ## Checks if the tree ``t`` has the key ``k``.
   t.root.findKey(k) != nil
 
 proc getOrDefault*[K;V: NonVoid](t: RBTreeM[K,V], k: K): V =
+  ## Returns the value associated with the key ``k`` or `V()`.
   let n = t.root.findKey(k)
   if not n.isNil:
     result = n.v
 
 proc maybeGet*[K;V: NonVoid](t: RBTreeM[K,V], k: K, v: var V): bool =
+  ## Puts the value associated with the key ``k`` into ``v`` and returns
+  ## `true`. If the key is absent, returns `false`.
   let res = t.root.findKey(k)
   result = not res.isNil
   if result:
     v = res.v
 
 proc min*[K,V](t: RBTreeM[K,V]): K =
+  ## Finds the minimal key value in ``t``.
   let n = t.root.findMin()
   assert n != nil
   n.k
 
 proc max*[K,V](t: RBTreeM[K,V]): K =
+  ## Finds the maximal key value in ``t``.
   let n = t.root.findMax()
   assert n != nil
   n.k
@@ -317,15 +350,19 @@ proc max*[K,V](t: RBTreeM[K,V]): K =
 include impl/nodeiterator
 
 proc equals*[K;V: NonVoid](l, r: RBTreeM[K,V]): bool =
+  ## Checks for the equality of ``l`` and ``r``.
   equalsImpl(l, r)
 
 proc `==`*[K;V: NonVoid](l, r: RBTreeM[K,V]): bool =
+  ## Checks for the equality of ``l`` and ``r``.
   l.equals(r)
 
 proc equals*[K](l, r: RBTreeM[K,void]): bool =
+  ## Checks for the equality of ``l`` and ``r``.
   equalsImpl(l, r)
 
 proc `==`*[K](l, r: RBTreeM[K,void]): bool =
+  ## Checks for the equality of ``l`` and ``r``.
   l.equals(r)
 
 proc bstDelete(root, pt: var Node): tuple[root: Node, deleted: Node] {.inline.} =
@@ -459,6 +496,7 @@ proc removeNode[K,V](root: var Node[K,V], n: Node[K,V]) =
       p.p = nil
 
 proc del*[K,V](t: RBTreeM[K,V], k: K): RBTreeM[K,V] {.discardable.} =
+  ## Returns the new tree from ``t`` where the key ``k`` is unset.
   result = t
   var n = t.root.findKey(k)
   if n.isNil:
@@ -497,7 +535,10 @@ proc treeReprImpl[K,V](n: Node[K,V], tab: int): string =
     result.add(treeReprImpl(n.r, tab + TAB_STEP))
 
 proc treeRepr*(t: RBTreeM): string =
+  ## Converts tree ``t`` to string.
   result = treeReprImpl(t.root, 0)
   result.setLen(result.len - 1)
 
-proc `$`*(n: RBTreeM): string = n.treeRepr
+proc `$`*(t: RBTreeM): string =
+  ## Converts tree ``t`` to string.
+  t.treeRepr
