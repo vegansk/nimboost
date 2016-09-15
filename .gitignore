@@ -1,7 +1,5 @@
 nimcache/
 build
 bin
-docs
 nimsuggest.log
 .#*.*
-index.html

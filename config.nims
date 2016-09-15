@@ -101,6 +101,7 @@ task docs, "Build documentation":
     "types.nim",
     "formatters.nim",
     "richstring.nim",
+    "typeutils.nim",
 
     "data/props.nim",
     "data/rbtree.nim",
