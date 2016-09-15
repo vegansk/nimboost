@@ -144,3 +144,15 @@ task test_multipart, "Test multipart":
 
 task test_memory, "Test memory":
   test "data/test_memory", Target.C
+
+task test_richstring, "Test richstring":
+  test "test_richstring", Target.C
+
+task test_parsers, "Test richstring":
+  test "test_parsers", Target.C
+
+task test_limits, "Test richstring":
+  test "test_limits", Target.C
+
+task test_formatters, "Test formatters":
+  test "test_formatters", Target.C

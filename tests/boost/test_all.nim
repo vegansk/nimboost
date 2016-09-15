@@ -1,7 +1,10 @@
 when defined(js):
   # Core
   import test_typeclasses,
-         test_limits
+         test_limits,
+         test_parsers,
+         test_formatters,
+         test_richstring
   # Data
   import data.test_stackm,
          data.test_rbtreem,
@@ -11,7 +14,9 @@ else:
   # Core
   import test_limits,
          test_parsers,
-         test_typeclasses
+         test_typeclasses,
+         test_formatters,
+         test_richstring
   # Data
   import data.test_stackm,
          data.test_rbtreem,
