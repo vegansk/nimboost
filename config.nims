@@ -97,6 +97,8 @@ task docs, "Build documentation":
     "parsers.nim",
     "typeclasses.nim",
     "types.nim",
+    "formatters.nim",
+    "richstring.nim",
 
     "data/props.nim",
     "data/rbtree.nim",

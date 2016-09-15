@@ -43,6 +43,10 @@ proc handleFFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
   result = newCall(bindSym"floatToStr", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(false))
 
+proc handleEFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
+  var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
+  result = newCall(bindSym"floatToStr", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(true))
+
 proc handleSFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   var (maxLen, _) = parseIntFmt(fmtp)
   if maxLen == 0:
@@ -55,7 +59,7 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
     nodes.add(parseExpr("$(" & exp & ")"))
     nodes.add(newLit(fmt[1..^1]))
   else:
-    const formats = {'d', 'f', 's', 'x'}
+    const formats = {'d', 'f', 's', 'x', 'e'}
     var idx = 1
     var fmtm = ""
     var fmtp = ""
@@ -77,6 +81,8 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
         nodes.add(handleXFormat(exp, fmtp))
       of "f":
         nodes.add(handleFFormat(exp, fmtp))
+      of "e":
+        nodes.add(handleEFormat(exp, fmtp))
       of "s":
         nodes.add(handleSFormat(exp, fmtp))
       else:
@@ -84,6 +90,28 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
       nodes.add(newLit(fmt[idx+1..^1]))
 
 macro fmt*(fmt: string{lit}): expr =
+  ## String interpolation macro with scala-like format specifiers.
+  ## Knows about:
+  ## * `d` - decimal number formatter
+  ## * `h` - hex number formatter
+  ## * `f` - float number formatter
+  ## * `e` - float number formatter (scientific form)
+  ## * `s` - string formatter
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##   import boost.richstring
+  ##
+  ##   let s = "string"
+  ##   assert fmt"${s[0..2].toUpper}" == "STR"
+  ##   assert fmt"${-10}%04d" == "-010"
+  ##   assert fmt"0x${10}%02x" == "0x0A"
+  ##   assert fmt"""${"test"}%-5s""" == "test "
+  ##   assert fmt"${1}%.3f" == "1.000"
+  ##   assert fmt"Hello, $s!" == "Hello, string!"
+
   var nodes: seq[NimNode] = @[]
   var fragments = toSeq(fmt.strVal.interpolatedFragments)
   for idx in 0..<fragments.len:

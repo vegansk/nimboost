@@ -80,6 +80,9 @@ proc alignStr*(s: string, len: int, fill = ' ', trunc = false): string =
         inc idx
 
 proc floatToStr*(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false): string =
+  ## Converts ``v`` to string with precision == ``prec``. If result's length
+  ## is lesser then ``len``, it aligns result to the right with ``fill`` char.
+  ## If ``len`` is negative, the result is aligned to the left.
   let f = if scientific: ffScientific else: if prec == 0: ffDefault else: ffDecimal
   if len > 0 and v < 0 and fill == '0':
     result = "-" & alignStr(formatBiggestFloat(-v.BiggestFloat, f, prec, sep), len-1, fill)
