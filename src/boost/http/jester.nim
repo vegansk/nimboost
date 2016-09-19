@@ -63,7 +63,7 @@ type
     data*: tuple[action: CallbackAction, code: HttpCode,
                  headers: StringTableRef, content: string]
 
-  ReqMeth* = enum
+  ReqMeth* {.pure.} = enum
     HttpGet = "GET",
     HttpPost = "POST",
     HttpPut = "PUT",
@@ -237,21 +237,21 @@ proc parseReqMethod(reqMethod: string, output: var ReqMeth): bool =
   result = true
   case reqMethod.normalize
   of "get":
-    output = HttpGet
+    output = ReqMeth.HttpGet
   of "post":
-    output = HttpPost
+    output = ReqMeth.HttpPost
   of "put":
-    output = HttpPut
+    output = ReqMeth.HttpPut
   of "delete":
-    output = HttpDelete
+    output = ReqMeth.HttpDelete
   of "head":
-    output = HttpHead
+    output = ReqMeth.HttpHead
   of "options":
-    output = HttpOptions
+    output = ReqMeth.HttpOptions
   of "trace":
-    output = HttpTrace
+    output = ReqMeth.HttpTrace
   of "patch":
-    output = HttpPatch
+    output = ReqMeth.HttpPatch
   else:
     result = false
 
@@ -266,7 +266,7 @@ proc handleRequest(jes: Jester, client: AsyncSocket,
   except CgiError:
     logging.warn("Incorrect query. Got: $1" % [query])
 
-  var parsedReqMethod = HttpGet
+  var parsedReqMethod = ReqMeth.HttpGet
   if not parseReqMethod(reqMethod, parsedReqMethod):
     await client.statusContent($Http400, error($Http400, jesterVer),
                            {"Content-Type": "text/html;charset=utf-8"}.newStringTable)
@@ -733,6 +733,15 @@ proc createRoute(body, dest: NimNode, i: int) {.compileTime.} =
     thisRouteSym, ifStmt)
   dest.add blockStmt
 
+template enumValue(
+  enumName, valueName: string,
+  bindRule = brClosed
+): NimNode =
+  newDotExpr(
+    bindSym(enumName, bindRule),
+    newIdentNode(valueName)
+  )
+
 macro routes*(body: stmt): stmt {.immediate.} =
   #echo(treeRepr(body))
   result = newStmtList()
@@ -789,42 +798,42 @@ macro routes*(body: stmt): stmt {.immediate.} =
       outsideStmts.add(body[i])
 
   var ofBranchGet = newNimNode(nnkOfBranch)
-  ofBranchGet.add newIdentNode("HttpGet")
+  ofBranchGet.add enumValue("ReqMeth", "HttpGet")
   ofBranchGet.add caseStmtGetBody
   caseStmt.add ofBranchGet
 
   var ofBranchPost = newNimNode(nnkOfBranch)
-  ofBranchPost.add newIdentNode("HttpPost")
+  ofBranchPost.add enumValue("ReqMeth", "HttpPost")
   ofBranchPost.add caseStmtPostBody
   caseStmt.add ofBranchPost
 
   var ofBranchPut = newNimNode(nnkOfBranch)
-  ofBranchPut.add newIdentNode("HttpPut")
+  ofBranchPut.add enumValue("ReqMeth", "HttpPut")
   ofBranchPut.add caseStmtPutBody
   caseStmt.add ofBranchPut
 
   var ofBranchDelete = newNimNode(nnkOfBranch)
-  ofBranchDelete.add newIdentNode("HttpDelete")
+  ofBranchDelete.add enumValue("ReqMeth", "HttpDelete")
   ofBranchDelete.add caseStmtDeleteBody
   caseStmt.add ofBranchDelete
 
   var ofBranchHead = newNimNode(nnkOfBranch)
-  ofBranchHead.add newIdentNode("HttpHead")
+  ofBranchHead.add enumValue("ReqMeth", "HttpHead")
   ofBranchHead.add caseStmtHeadBody
   caseStmt.add ofBranchHead
 
   var ofBranchOptions = newNimNode(nnkOfBranch)
-  ofBranchOptions.add newIdentNode("HttpOptions")
+  ofBranchOptions.add enumValue("ReqMeth", "HttpOptions")
   ofBranchOptions.add caseStmtOptionsBody
   caseStmt.add ofBranchOptions
 
   var ofBranchTrace = newNimNode(nnkOfBranch)
-  ofBranchTrace.add newIdentNode("HttpTrace")
+  ofBranchTrace.add enumValue("ReqMeth", "HttpTrace")
   ofBranchTrace.add caseStmtTraceBody
   caseStmt.add ofBranchTrace
 
   var ofBranchPatch = newNimNode(nnkOfBranch)
-  ofBranchPatch.add newIdentNode("HttpPatch")
+  ofBranchPatch.add enumValue("ReqMeth", "HttpPatch")
   ofBranchPatch.add caseStmtPatchBody
   caseStmt.add ofBranchPatch
 

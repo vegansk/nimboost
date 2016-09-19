@@ -179,7 +179,7 @@ proc readLine*(s: AsyncStream): Future[string] {.async.} =
   while true:
     let c = await s.readChar
     if c == '\c':
-      await s.readChar
+      discard await s.readChar
       break
     elif c == '\L' or c == '\0':
       break
