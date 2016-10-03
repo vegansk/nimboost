@@ -76,11 +76,11 @@ proc readHeaders*(s: AsyncStream): Future[Props] {.async.} =
     else:
       if prevLine != "":
         let (k, v) = prevLine.parseHeader
-        discard result.add(k, v)
+        result.add(k, v)
       prevLine = line
   if prevLine != "":
     let (k, v) = prevLine.parseHeader
-    discard result.add(k, v)
+    result.add(k, v)
 
 proc parseCHeader(value: string): (string, seq[(string, string)]) =
   result[0] = ""

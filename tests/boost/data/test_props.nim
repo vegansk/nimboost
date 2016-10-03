@@ -13,7 +13,11 @@ suite "Props":
     for n, v in p:
       check: n == v
     check: p.toSeq == @{"a": "a", "b": "b", "c": "c"}
-    check: p.add("a", "A", delimiter="|")["a"] == "a|A"
-    check: p.add("a", "A", overwrite = true)["a"] == "A"
+
+    p.add("a", "A", delimiter="|")
+    check: p["a"] == "a|A"
+
+    p.add("a", "A", overwrite = true)
+    check: p["a"] == "A"
     p.clear
     check: p.len == 0

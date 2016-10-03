@@ -35,11 +35,10 @@ proc `[]`*(p: Props, name: string): string =
       return v
   return ""
 
-proc add*(p: var Props; n, v: string, overwrite = false, delimiter = ","): var Props {.discardable.} =
+proc add*(p: var Props; n, v: string, overwrite = false, delimiter = ",") =
   ## Sets the property named ``n`` to the value ``v``. If the property was already set,
   ## then overwrite it's value if ``overwrite`` == `true` or append it using ``delimiter``
   ## to the previous value.
-  result = p
   for idx in 0..<p.len:
     var el = getMVar(p, idx)
     if el.name.cmpIgnoreCase(n) == 0:
