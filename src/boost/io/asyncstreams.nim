@@ -189,19 +189,21 @@ proc readLine*(s: AsyncStream): Future[string] {.async.} =
 const PeekLineFallbackBuffLen = 4096
 
 proc peekLine*(s: AsyncStream): Future[string] {.async.} =
-  ## Peeks the line from the stream ``s`` until end of stream or the new line delimeter.
-  ## It works only if the stream supports peekLine operation itself or
-  ## allows to get/set stream position
+  ## Peeks the line from the stream ``s`` until end of stream or the
+  ## new line delimeter. It works only if the stream supports
+  ## `peekLine` itself, allows to get/set stream position, or
+  ## supports `peek`.
   if not s.peekLineImpl.isNil:
     # Most optimized version
     result = await s.peekLineImpl(s)
-  elif not s.getPositionImpl.isNil and not s.setPositionImpl.isNil:
+  elif (not s.getPositionImpl.isNil) and (not s.setPositionImpl.isNil):
     # GetPos/SetPos version
     let pos = s.getPosition
     result = await s.readLine
     s.setPosition(pos)
   elif not s.peekImpl.isNil:
-    # Fallback to read as max as possible
+    # Fallback to read as much as possible
+    # TODO: maximum length is arbitrary here. Make it a parameter?
     result = await s.peekData(PeekLineFallbackBuffLen)
     for i in 0..<result.len:
       if result[i] in {'\c', '\L', '\0'}:
@@ -736,8 +738,17 @@ proc newAsyncBufferedStream*(s: AsyncStream, buff: seq[byte]): AsyncBufferedStre
   wrapAsyncStream(AsyncBufferedStream, s)
 
   result.atEndImpl = bsAnEnd
-  result.getPositionImpl = bsGetPosition
-  result.setPositionImpl = bsSetPosition
+
+  if s.getPositionImpl != nil:
+    result.getPositionImpl = bsGetPosition
+  else:
+    result.getPositionImpl = nil
+
+  if s.setPositionImpl != nil:
+    result.setPositionImpl = bsSetPosition
+  else:
+    result.setPositionImpl = nil
+
   result.readImpl = cast[type(result.readImpl)](bsRead)
   result.peekImpl = cast[type(result.peekImpl)](bsPeek)
 

@@ -201,3 +201,55 @@ world!""")
       check: pd == data
 
     waitFor doTest()
+
+  test "Buffered stream without position control":
+    proc doTest {.async.} =
+      # 20 bytes of data
+      const data = "01234567890123456789\Labcde"
+      let ss = newAsyncStringStream(data)
+      # Mock stream without position control
+      ss.getPositionImpl = nil
+      ss.setPositionImpl = nil
+
+      # Read 10 bytes chunks
+      let bs = newAsyncBufferedStream(ss, 10)
+
+      var pd = await bs.peekData(5)
+      check: pd == "01234"
+      pd = await bs.peekData(5)
+      check: pd == "01234"
+
+      var rd = await bs.readData(5)
+      check: rd == "01234"
+
+      pd = await bs.peekData(5)
+      check: pd == "56789"
+
+      rd = await bs.readData(5)
+      check: rd == "56789"
+
+      pd = await bs.peekLine
+      check: pd == "0123456789"
+      
+      rd = await bs.readData(7)
+      check: rd == "0123456"
+
+      pd = await bs.peekLine
+      check: pd == "789"
+
+      rd = await bs.readLine
+      check: rd == "789"
+
+      pd = await bs.peekLine
+      check: pd == "abcde"
+      
+      rd = await bs.readLine
+      check: rd == "abcde"
+
+      pd = await bs.peekLine
+      check: pd == ""
+      
+      rd = await bs.readLine
+      check: rd == ""
+
+    waitFor doTest()
