@@ -9,7 +9,7 @@ import ./httpcommon,
        ../data/props,
        ../data/memory,
        strtabs,
-       tables, logging
+       tables
 
 type
   MultiPartMessage* = ref object
@@ -56,9 +56,7 @@ proc skipPreamble(m: MultipartMessage): Future[void] {.async.} =
     if line.startsWith(m.boundary):
       break
 
-    debug("before readLine")
     discard await(m.s.readLine)
-    debug("after readLine")
 
 proc readNextPart*(m: MultiPartMessage): Future[MessagePart] {.async.} =
   ## Returns the next part of the message ``m`` or nil if it's ended
