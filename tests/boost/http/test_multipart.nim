@@ -26,6 +26,17 @@ Content-Type: text/html
 
 """.replace("\n", "\c\L")
 
+const MPWithPreamble = """This is the preamble.
+It should be ignored
+--12boundary34
+Content-Disposition: form-data; name="foo"
+Content-Type: text/plain
+
+First part.
+--12boundary34--
+
+""".replace("\n", "\c\L")
+
 suite "Multipart":
   test "read multipart message":
     let ct = "multipart/form-data; boundary=---------------------------9051914041544843365972754266".parseContentType
@@ -67,6 +78,29 @@ suite "Multipart":
     ps = part.getPartDataStream()
     data = waitFor ps.readAll
     check: data == "<!DOCTYPE html><title>Content of a.html.</title>"
+
+    part = waitFor mp.readNextPart
+    check: mp.atEnd
+    check: part.isNil
+
+  test "should skip preamble":
+    let ct = "multipart/form-data; boundary=12boundary34".parseContentType
+    let s = newAsyncStringStream(MPWithPreamble)
+
+    let mp = MultipartMessage.open(s, ct)
+    check: not mp.atEnd
+
+    var part = waitFor mp.readNextPart
+    require: not part.isNil
+    check: not mp.atEnd
+    check: part.headers.toSeq == @{
+      "Content-Disposition": "form-data; name=\"foo\"",
+      "Content-Type": "text/plain"
+    }
+
+    var ps = part.getPartDataStream()
+    var data = waitFor ps.readAll
+    check: data == "First part."
 
     part = waitFor mp.readNextPart
     check: mp.atEnd

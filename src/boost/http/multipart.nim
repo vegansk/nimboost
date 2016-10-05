@@ -16,6 +16,7 @@ type
     ## The multipart message
     s: AsyncStream
     ct: ContentType
+    preambleFinished: bool
     finished: bool
     boundary: string
   MessagePart* = ref object
@@ -33,7 +34,10 @@ proc open*(t: typedesc[MultiPartMessage], s: AsyncStream, contentType: ContentTy
     raise newException(ValueError, "MultiPartMessage can't handle this mime-type: " & contentType.mimeType)
   if contentType.boundary.len == 0:
     raise newException(ValueError, "ContentType boundary is absent")
-  MultiPartMessage(s: newAsyncBufferedStream(s), ct: contentType, boundary: "--" & contentType.boundary)
+  MultiPartMessage(
+    s: newAsyncBufferedStream(s),
+    ct: contentType,
+    boundary: "--" & contentType.boundary)
 
 proc atEnd*(m: MultiPartMessage): bool =
   ## Checks if there is no more body parts in the message ``m``.
@@ -41,8 +45,27 @@ proc atEnd*(m: MultiPartMessage): bool =
   ## returned ``nil``.
   m.finished
 
+proc skipPreamble(m: MultipartMessage): Future[void] {.async.} =
+  ## Skip preamble lines until an encapsulation line is found
+
+  while true:
+    if m.atEnd:
+      break
+
+    let line = await m.s.peekLine
+    if line.startsWith(m.boundary):
+      break
+
+    discard await(m.s.readLine)
+
 proc readNextPart*(m: MultiPartMessage): Future[MessagePart] {.async.} =
   ## Returns the next part of the message ``m`` or nil if it's ended
+
+  # We can have arbitrary preamble before the first message
+  if not m.preambleFinished:
+    await m.skipPreamble
+    m.preambleFinished = true
+
   if m.atEnd:
     return
   let s = m.s
