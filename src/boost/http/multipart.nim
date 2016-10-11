@@ -115,22 +115,30 @@ proc eopRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
   else:
     result = await es.s.readBuffer(buf, pos)
     let tb = await es.peekData(boundary.len + 2)
-    if tb == boundary & "\c\L":
-      # Move cursor to the beginning of the boundary
-      discard await es.s.readData(2)
-      es.eop = true
-    elif tb == boundary & "--":
-      # Trailing boundary found
-      # Everything else is epilogue, which we don't use
-      discard await es.s.readData(2)
-      es.eop = true
-      es.p.msg.finished = true
+    if tb.startsWith(boundary):
+      # two remaining characters
+      let post = tb[^2..^1]
+      if post == "\c\L":
+        # Move cursor to the beginning of the boundary
+        discard await es.s.readData(2)
+        es.eop = true
+      elif post == "--":
+        # Trailing boundary found
+        # Everything after this is epilogue, which we don't use
+        discard await es.s.readData(2)
+        es.eop = true
+        es.p.msg.finished = true
+      else:
+        # Unexpected characters after the boundary? This is
+        # malformed HTTP.
+        # TODO: throw an exception?
+        discard await es.s.readData(2)
+        es.eop = true
+        es.p.msg.finished = true
     else:
-      # We have a line that starts with a boundary, followed by
-      # two unexpected characters. This is malformed HTTP.
-      discard await es.s.readData(2)
-      es.eop = true
-      es.p.msg.finished = true
+      # We got a partial match on the boundary, but it's a false
+      # positive. Cursor is now at its start.
+      discard
 
 proc eopAtEnd(s: AsyncStream): bool =
   s.EndOfPartStream.eop
