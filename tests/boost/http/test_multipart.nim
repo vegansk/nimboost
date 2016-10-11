@@ -33,8 +33,16 @@ Content-Disposition: form-data; name="foo"
 Content-Type: text/plain
 
 First part.
---12boundary34--
+--12boundary34--""".replace("\n", "\c\L")
 
+# trigger partial detection branch for buffer size 10
+const TrickyMP = """--12345
+Content-Disposition: form-data; name="text"
+Convent-Transfer-Encoding: 8bit
+
+abc
+--1234(not a boundary yet)--12
+--12345--
 """.replace("\n", "\c\L")
 
 suite "Multipart":
@@ -105,3 +113,54 @@ suite "Multipart":
     part = waitFor mp.readNextPart
     check: mp.atEnd
     check: part.isNil
+
+  test "should properly handle part of boundary in content":
+
+    # Small enough to trigger partial boundary detection, but large
+    # enough to store the boundary
+    const BufSize = 10
+
+    let ct = "multipart/form-data; boundary=12345".parseContentType
+    let s = newAsyncStringStream(TrickyMP)
+    let mp = MultipartMessage.open(s, ct)
+    check: not mp.atEnd
+
+    var part = waitFor mp.readNextPart
+    require: not part.isNil
+    check: not mp.atEnd
+
+    let ps = part.getPartDataStream()
+
+    # Read the part by small chunks
+    var acc = ""
+    while not ps.atEnd:
+      let data = waitFor ps.readData(BufSize)
+      check: data.len <= BufSize
+      acc.add(data)
+
+    check: acc == "abc\c\L--1234(not a boundary yet)--12"
+
+  test "should work even when the buffer doesn't fit the boundary":
+
+    # shorter than the boundary
+    const BufSize = 4
+
+    let ct = "multipart/form-data; boundary=12345".parseContentType
+    let s = newAsyncStringStream(TrickyMP)
+    let mp = MultipartMessage.open(s, ct)
+    check: not mp.atEnd
+
+    var part = waitFor mp.readNextPart
+    require: not part.isNil
+    check: not mp.atEnd
+
+    let ps = part.getPartDataStream()
+
+    # Read the part by small chunks
+    var acc = ""
+    while not ps.atEnd:
+      let data = waitFor ps.readData(BufSize)
+      check: data.len <= BufSize
+      acc.add(data)
+
+    check: acc == "abc\c\L--1234(not a boundary yet)--12"
