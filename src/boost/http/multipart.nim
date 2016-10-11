@@ -138,7 +138,20 @@ proc eopRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
     else:
       # We got a partial match on the boundary, but it's a false
       # positive. Cursor is now at its start.
-      discard
+      # If we return like this, the next read request will start at
+      # the beginning of the partial match. If `size` is small
+      # enough, this will lead to an infinite loop, so we have to make
+      # sure we move forward. Fortunately, we have at least 1 byte
+      # of space starting at `pos` (since we got a match).
+
+      # pointer to byte at pos
+      let posBuf = cast[pointer](
+        cast[uint](buf) + uint(pos)
+      )
+
+      result.inc(
+        await es.s.readBuffer(posBuf, 1)
+      )
 
 proc eopAtEnd(s: AsyncStream): bool =
   s.EndOfPartStream.eop
