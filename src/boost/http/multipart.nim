@@ -35,6 +35,9 @@ proc open*(t: typedesc[MultiPartMessage], s: AsyncStream, contentType: ContentTy
   if contentType.boundary.len == 0:
     raise newException(ValueError, "ContentType boundary is absent")
   MultiPartMessage(
+    # This breaks Keep-Alive! The underlying stream is moved
+    # arbitrarily forward while parsing.
+    # TODO: Find a way to make this work with Keep-Alive
     s: newAsyncBufferedStream(s),
     ct: contentType,
     boundary: "--" & contentType.boundary)
@@ -124,8 +127,10 @@ proc eopRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
         es.eop = true
       elif post == "--":
         # Trailing boundary found
-        # Everything after this is epilogue, which we don't use
-        discard await es.s.readData(2)
+        # The cursor is moved to the first character after the boundary
+        # Everything after this point is outside the multipart, and does
+        # not concern us
+        discard await es.s.readData(tb.len)
         es.eop = true
         es.p.msg.finished = true
       else:
