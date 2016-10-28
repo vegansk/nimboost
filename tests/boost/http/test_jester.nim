@@ -8,7 +8,12 @@ const HOST = "localhost"
 include impl.run_test_server
 
 suite "Jester":
-  let client = newAsyncHttpClient()
+
+  setup:
+    let client = newAsyncHttpClient()
+
+  teardown:
+    client.close
 
   test "can access root":
     # If this fails then alltest is likely not running.
@@ -38,3 +43,20 @@ suite "Jester":
   test "resp":
     let resp = waitFor client.get(url"/resp")
     check resp.body == "This should be the response"
+
+  test "multipart":
+    var md = newMultipartData()
+    md.add("foo", "bar")
+    md.add("baz", "qux")
+    let resp = waitFor client.post(url"/multipart", multipart = md)
+    check resp.body == "foo,bar,baz,qux"
+
+  test "multipart + keepAlive":
+    var md = newMultipartData()
+    md.add("foo", "bar")
+    let resp = waitFor client.post(url"/multipart", multipart = md)
+    check resp.body == "foo,bar"
+
+    let resp2 = waitFor client.get(url"/resp")
+    let body2 = resp2.body
+    check body2 == "This should be the response"

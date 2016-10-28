@@ -1,5 +1,6 @@
 from boost.http.asynchttpserver import RequestBody, getStream
 from boost.io.asyncstreams import readAll
+import boost.http.multipart
 
 proc runSocketServer =
   proc run {.gcsafe.} =
@@ -104,6 +105,24 @@ proc runSocketServer =
         body.add($b)
         status = Http200
 
+      post "/multipart":
+        let mp = request.formData
+        var acc = newSeq[string]()
+        while not mp.atEnd:
+          let part = await mp.readNextPart()
+          if part == nil: break
+
+          acc.add(part.contentDisposition.name)
+
+          let stream = part.getPartDataStream()
+          if stream == nil: break
+
+          let contentFut = readAll(stream)
+          let content = await contentFut
+          acc.add(content)
+
+        resp(acc.join(","))
+
     runForever()
 
   spawn run()
@@ -113,4 +132,3 @@ runSocketServer()
 sleep(1000)
 
 proc url(path: string): auto = "http://" & HOST & ":" & $(PORT.int) & "/foo" & path
-
