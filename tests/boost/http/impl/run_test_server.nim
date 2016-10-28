@@ -105,6 +105,9 @@ proc runSocketServer =
         body.add($b)
         status = Http200
 
+      post "/simplePost":
+        resp(await request.body.getStream.readAll)
+
       post "/multipart":
         let mp = request.formData
         var acc = newSeq[string]()
