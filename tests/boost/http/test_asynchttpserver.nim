@@ -30,6 +30,9 @@ proc serverThread =
     of "post":
       if req.url.path == "/count":
         await processBigData(req)
+      elif req.url.path == "/discardbody":
+        # Doesn't read the body!
+        await req.respond(Http200, "discarded")
       else:
         let body = await req.body
         await req.respond(Http200, body)
@@ -79,3 +82,9 @@ suite "asynchttpserver":
 
   test "POST (count)":
     check: (url & "/count").postRequest(count = 2_000_000) == $2_000_000
+
+  test "Ignoring POST body shouldn't break connection":
+    let client = newHttpClient()
+    let body = "foo\c\L\c\Lbar\c\Lbaz"
+    check: client.postContent(url & "/discardbody", body = body) == "discarded"
+    check: client.getContent(url) == "Hello, world!"

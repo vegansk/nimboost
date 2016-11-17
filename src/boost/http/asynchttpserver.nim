@@ -41,6 +41,7 @@ type
     s: AsyncStream
     length: int64
     data: string
+    cachedStream: AsyncStream
 
   Request* = object
     client*: AsyncSocket # TODO: Separate this into a Response object?
@@ -88,6 +89,8 @@ proc getStream*(body: RequestBody): AsyncStream =
   ## Returns the request's body as asynchronous stream
   if not body.data.isNil:
     result = newAsyncStringStream(body.data)
+  elif not body.cachedStream.isNil:
+    result = body.cachedStream
   else:
     var rb = new RequestBodyStream
     rb.body = body
@@ -96,6 +99,8 @@ proc getStream*(body: RequestBody): AsyncStream =
     rb.atEndImpl = rbAtEnd
     rb.getPositionImpl = rbGetPosition
     rb.readImpl = cast[type(rb.readImpl)](rbReadData)
+
+    body.cachedStream = rb
 
     result = rb
 
@@ -229,7 +234,7 @@ proc processClient(client: AsyncSocket, address: string,
         else:
           await client.sendStatus("417 Expectation Failed")
 
-    # Read the body
+    # Create body object (if needed)
     # - Check for Content-length header
     if request.headers.hasKey("Content-Length"):
       var contentLength = 0
@@ -253,6 +258,10 @@ proc processClient(client: AsyncSocket, address: string,
 
     if "upgrade" in request.headers.getOrDefault("connection"):
       return
+
+    # Make sure the body is fully read
+    if not request.reqBody.isNil and request.reqBody.data.isNil:
+      discard await(request.reqBody.getStream.readAll)
 
     # Persistent connections
     if (request.protocol == HttpVer11 and
