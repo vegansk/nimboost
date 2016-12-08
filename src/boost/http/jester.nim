@@ -872,8 +872,7 @@ macro routesFuture*(body: stmt): untyped{.immediate.} =
 
 template routes*(body: stmt): untyped {.immediate.} =
   bind asyncCheck, routesFuture
-  let f: Future[void] = routesFuture(body)
-  asyncCheck f
+  asyncCheck routesFuture(body)
 
 macro settings*(body: stmt): stmt {.immediate.} =
   #echo(treeRepr(body))
