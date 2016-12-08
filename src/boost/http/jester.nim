@@ -334,12 +334,19 @@ proc newSettings*(port = Port(5000), staticDir = getCurrentDir() / "public",
                      port: port,
                      bindAddr: bindAddr)
 
-proc serve*(
+proc serveFuture*(
     match:
       proc (request: Request, response: Response): Future[bool] {.gcsafe, closure.},
-    settings: Settings = newSettings()) =
-  ## Creates a new async http server or scgi server instance and registers
-  ## it with the dispatcher.
+    settings: Settings = newSettings()): Future[void] =
+  ## Starts the process of listening for incoming HTTP connections on the
+  ## specified address and port.
+  ##
+  ## When a request is made by a client the specified callback will be called.
+  ##
+  ## This version of `serve` returns a `Future` that runs until the server
+  ## encounters an error from which it cannot recover (for example,
+  ## when attempting to bind on a port that is already taken),
+  ## at which point the `Future` completes with an error.
   var jes: Jester
   jes.settings = settings
   jes.settings.mimes = newMimetypes()
@@ -351,7 +358,7 @@ proc serve*(
     addHandler(logging.newConsoleLogger())
     setLogFilter(when defined(release): lvlInfo else: lvlDebug)
 
-  asyncCheck jes.httpServer.serve(jes.settings.port,
+  result = jes.httpServer.serve(jes.settings.port,
     proc (req: asynchttpserver.Request): Future[void] {.gcsafe, closure.} =
       handleHTTPRequest(jes, req), settings.bindAddr)
   if settings.bindAddr.len > 0:
@@ -360,6 +367,16 @@ proc serve*(
   else:
     logging.info("Jester is making jokes at http://localhost:$1$2" %
                  [$jes.settings.port, jes.settings.appName])
+
+proc serve*(
+    match:
+      proc (request: Request, response: Response): Future[bool] {.gcsafe, closure.},
+    settings: Settings = newSettings()) {.inline.} =
+  ## Starts the process of listening for incoming HTTP connections on the
+  ## specified address and port.
+  ##
+  ## When a request is made by a client the specified callback will be called.
+  asyncCheck serveFuture(match, settings)
 
 template resp*(code: HttpCode,
                headers: openarray[tuple[key, value: string]],
@@ -742,9 +759,13 @@ template enumValue(
     newIdentNode(valueName)
   )
 
-macro routes*(body: stmt): stmt {.immediate.} =
+macro routesFuture*(body: stmt): untyped{.immediate.} =
+  ## This version of `routes` returns a `Future` that runs until the server
+  ## encounters an error from which it cannot recover (for example,
+  ## when attempting to bind on a port that is already taken),
+  ## at which point the `Future` completes with an error.
   #echo(treeRepr(body))
-  result = newStmtList()
+  result = newNimNode(nnkStmtListExpr)
 
   # -> declareSettings()
   result.add newCall(bindSym"declareSettings")
@@ -845,9 +866,14 @@ macro routes*(body: stmt): stmt {.immediate.} =
   result.add(outsideStmts)
   result.add(matchProc)
 
-  result.add parseExpr("jester.serve(match, settings)")
+  result.add parseExpr("jester.serveFuture(match, settings)")
   #echo toStrLit(result)
   #echo treeRepr(result)
+
+template routes*(body: stmt): untyped {.immediate.} =
+  bind asyncCheck, routesFuture
+  let f: Future[void] = routesFuture(body)
+  asyncCheck f
 
 macro settings*(body: stmt): stmt {.immediate.} =
   #echo(treeRepr(body))
