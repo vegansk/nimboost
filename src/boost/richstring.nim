@@ -89,7 +89,7 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
         quit "Unknown format \"" & fmtm & "\""
       nodes.add(newLit(fmt[idx+1..^1]))
 
-macro fmt*(fmt: string{lit}): expr =
+macro fmt*(fmt: static[string]): expr =
   ## String interpolation macro with scala-like format specifiers.
   ## Knows about:
   ## * `d` - decimal number formatter
@@ -113,7 +113,7 @@ macro fmt*(fmt: string{lit}): expr =
   ##   assert fmt"Hello, $s!" == "Hello, string!"
 
   var nodes: seq[NimNode] = @[]
-  var fragments = toSeq(fmt.strVal.interpolatedFragments)
+  var fragments = toSeq(fmt.interpolatedFragments)
   for idx in 0..<fragments.len:
     let k = fragments[idx][0]
     let v = fragments[idx][1]
