@@ -41,3 +41,10 @@ suite "richstring":
       check: fmt"${1}%e" == "1e+0"
     else:
       check: fmt"${1}%e" == "1.000000e+00"
+
+    # Escape characters
+    check: fmt"\x0A" == "\L"
+    check: fmt"\10" == "\L"
+    check: fmt"\L" == "\L"
+    check: fmt"$$\L" == "$\L"
+    check: fmt"""${"\L"}""" == "\L"

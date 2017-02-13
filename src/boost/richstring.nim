@@ -125,7 +125,7 @@ macro fmt*(fmt: static[string]): expr =
         nodes.del(nodes.len-1)
         handleFormat(fragments[idx-1][1], v, nodes)
       else:
-        nodes.add(newLit(v))
+        nodes.add(parseExpr("\"" & v & "\""))
     else:
       nodes.add(parseExpr("$(" & v & ")"))
   result = newNimNode(nnkStmtList).add(
