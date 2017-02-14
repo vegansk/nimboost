@@ -10,7 +10,7 @@ include impl.run_test_server
 suite "Jester":
 
   setup:
-    let client = newAsyncHttpClient()
+    let client = newAsyncHttpClient(maxRedirects = 0)
 
   teardown:
     client.close
