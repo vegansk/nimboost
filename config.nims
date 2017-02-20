@@ -158,3 +158,6 @@ task test_limits, "Test richstring":
 
 task test_formatters, "Test formatters":
   test "test_formatters", Target.C
+
+task test_objutils, "Test objutils":
+  test "test_objutils", Target.C
