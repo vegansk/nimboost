@@ -5,7 +5,7 @@ when defined(js):
          test_parsers,
          test_formatters,
          test_richstring,
-         test_objutils
+         test_typeutils
   # Data
   import data.test_stackm,
          data.test_rbtreem,
@@ -18,7 +18,7 @@ else:
          test_typeclasses,
          test_formatters,
          test_richstring,
-         test_objutils
+         test_typeutils
   # Data
   import data.test_stackm,
          data.test_rbtreem,

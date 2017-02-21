@@ -50,6 +50,7 @@ proc test(name: string, target: Target) =
   if not dirExists "bin":
     mkDir "bin"
   --run
+  --define:insideTheTest
   let fName = name.splitPath[1]
   buildBase true, joinPath("bin", fName), joinPath("tests/boost", name), target
 
@@ -95,6 +96,7 @@ task docs, "Build documentation":
   const modules = [
     "limits.nim",
     "parsers.nim",
+    "typeutils.nim",
     "typeclasses.nim",
     "types.nim",
     "formatters.nim",
@@ -159,5 +161,5 @@ task test_limits, "Test richstring":
 task test_formatters, "Test formatters":
   test "test_formatters", Target.C
 
-task test_objutils, "Test objutils":
-  test "test_objutils", Target.C
+task test_typeutils, "Test typeutils":
+  test "test_typeutils", Target.C
