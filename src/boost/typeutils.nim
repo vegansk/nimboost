@@ -78,6 +78,9 @@ type
     ExportFields,
     ExportAll
 
+  GeneratorOptions = object
+    toString: bool
+
   TypeHeader = object
     ## The description of the generated type
     name*: string ## The name of the type
@@ -88,6 +91,7 @@ type
     parentGenericParams*: Option[GenericParams] ## Parent type's generic arguments
     constructor*: Option[Constructor] ## Constructor description
     exportOption*: ExportOption ## Export option
+    generatorOptions*: GeneratorOptions
     parentImpl*: Option[Type] ## Parent implementation
 
   Field = object
@@ -114,6 +118,11 @@ type
 
   TypeHierarchy = seq[Type]
 
+proc newGeneratorOptions(
+  toString: bool
+): GeneratorOptions =
+  result.toString = toString
+
 proc newTypeHeader(
   name: string,
   genericParams: Option[GenericParams],
@@ -122,7 +131,8 @@ proc newTypeHeader(
   parentName: Option[string],
   parentGenericParams: Option[GenericParams],
   constructor: Option[Constructor],
-  exportOption: ExportOption
+  exportOption: ExportOption,
+  generatorOptions: GeneratorOptions
 ): TypeHeader =
   result.name = name
   result.genericParams = genericParams
@@ -131,6 +141,7 @@ proc newTypeHeader(
   result.parentGenericParams = parentGenericParams
   result.constructor = constructor
   result.exportOption = exportOption
+  result.generatorOptions = generatorOptions
   result.parentImpl = Type.none
 
 proc newField(
@@ -190,6 +201,9 @@ proc exportType(o: ExportOption): bool =
   o >= ExportType
 
 proc exportFields(o: ExportOption): bool =
+  o >= ExportFields
+
+proc exportAdditionalProcs(o: ExportOption): bool =
   o >= ExportFields
 
 when false:
@@ -444,7 +458,8 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
       string.none,
       GenericParams.none,
       Constructor.none,
-      ExportNone
+      ExportNone,
+      newGeneratorOptions(toString = false)
     )
   of nnkInfix:
     expectKind head[0], nnkIdent
@@ -460,7 +475,8 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
         pname.some,
         pgp,
         Constructor.none,
-        ExportNone
+        ExportNone,
+        newGeneratorOptions(toString = false)
       )
     elif head[0].`$` == "ref":
       expectLen head, 3
@@ -481,7 +497,8 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
         parent,
         GenericParams.none,
         Constructor.none,
-        ExportNone
+        ExportNone,
+        newGeneratorOptions(toString = false)
       )
     else:
       error "Wrong data header syntax: " & treeRepr(head)
@@ -499,13 +516,16 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
       string.none,
       GenericParams.none,
       Constructor.none,
-      ExportNone
+      ExportNone,
+      newGeneratorOptions(toString = false)
     )
   else:
     error "Unexpected header: " & treeRepr(head)
   for m in modifiers:
     if m.kind == nnkIdent and $m == "exported":
       result.exportOption = ExportAll
+    elif m.kind == nnkIdent and $m == "show":
+      result.generatorOptions.toString = true
     else:
       error "Unknown data type modifier: " & repr(m)
 
@@ -580,7 +600,8 @@ proc genDataTypeBody(t: Type): NimNode {.compileTime.} =
   else:
     result.add(newNimNode(nnkOfInherit).add(t.mkParentType))
   result.add(recList)
-  if t.header.isRef:
+  if t.header.isRef
+:
     result = newNimNode(nnkRefTy).add(result)
 
 proc genDataTypeNameNode(typeHeader: TypeHeader): NimNode {.compileTime.} =
@@ -612,6 +633,10 @@ proc genDataType(t: Type): NimNode {.compileTime.} =
   # Type implementation
   `type`.add(genDataTypeBody(t))
   result = newNimNode(nnkTypeSection).add(`type`)
+
+proc fillProcGenericParams(p: NimNode, t: Type) =
+  if t.header.genericParams.isSome:
+    p[2] = genGenericParams(t.header.genericParams.get)
 
 proc genDataConstructor(t: Type): NimNode {.compileTime.} =
   # Constructor must use all the fields from the object and all of it's
@@ -652,8 +677,7 @@ proc genDataConstructor(t: Type): NimNode {.compileTime.} =
     )
 
   result = newProc(procNameI, params, body)
-  if t.header.genericParams.isSome:
-    result[2] = genGenericParams(t.header.genericParams.get)
+  fillProcGenericParams(result, t)
 
 proc genDataGetter(t: Type, fields: Fields, fieldIdx: int): NimNode {.compileTime.} =
   let f = fields[fieldIdx]
@@ -666,8 +690,7 @@ proc genDataGetter(t: Type, fields: Fields, fieldIdx: int): NimNode {.compileTim
     proc `procIdent`(v: `typeIdent`): `fieldType` {.used.} =
       v.`fieldIdent`
 
-  if t.header.genericParams.isSome:
-    result[0][2] = genGenericParams(t.header.genericParams.get)
+  fillProcGenericParams(result[0], t)
 
 proc genDataGetters(t: Type): NimNode {.compileTime.} =
   let fields = t.getTypeHierarchy.fields
@@ -677,6 +700,42 @@ proc genDataGetters(t: Type): NimNode {.compileTime.} =
       result.add genDataGetter(t, fields, i)
   if result.len == 0:
     result = newEmptyNode()
+
+proc genShowProc(t: Type): NimNode {.compileTime.} =
+  let typeIdent = t.mkType
+  let nameStr = newStrLitNode(t.header.name)
+  var procIdent = newNimNode(nnkAccQuoted).add(ident"$")
+  if t.header.exportOption.exportAdditionalProcs:
+    procIdent = postfix(procIdent, "*")
+  var vIdent = ident"v"
+  var resIdent = ident"res"
+  var body = newStmtList()
+
+  for i in 0..<t.fields.len:
+    let f = t.fields[i]
+    let fIdent = ident(f.name)
+    let fName = newStrLitNode(f.name)
+    let splitter = if i == 0: newStrLitNode("") else: newStrLitNode(", ")
+    body.add quote do:
+      `resIdent` &= `splitter` & `fName` & ": "
+      when compiles($(`vIdent`.`fIdent`)):
+        `resIdent` &= $(`vIdent`.`fIdent`)
+      else:
+        `resIdent` &= "..."
+
+  result = quote do:
+    proc `procIdent`(`vIdent`: `typeIdent`): string =
+      var `resIdent` = `nameStr` & "("
+      `body`
+      `resIdent` &= ")"
+      return `resIdent`
+
+  fillProcGenericParams(result[0], t)
+
+proc genAdditionalProcs(t: Type): NimNode {.compileTime.} =
+  result = newStmtList()
+  if t.header.generatorOptions.toString:
+    result.add(genShowProc(t))
 
 var lastType {.compileTime.} = Type()
 var typesTable {.compileTime.} = newSeq[(NimNode, Type)]()
@@ -712,6 +771,7 @@ proc dataImpl(parentSymO: Option[NimNode]): NimNode {.compileTime.} =
   result.add(genDataType(lastType))
   result.add(genDataConstructor(lastType))
   result.add(genDataGetters(lastType))
+  result.add(genAdditionalProcs(lastType))
   result.add(newCall(bindSym"appendType", ident(lastType.header.name)))
 
 macro dataImplWithParent(parent: typed): untyped =
