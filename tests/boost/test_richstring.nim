@@ -48,3 +48,10 @@ suite "richstring":
     check: fmt"\L" == "\L"
     check: fmt"$$\L" == "$\L"
     check: fmt"""${"\L"}""" == "\L"
+
+    # Multiline
+    check: fmt"""
+test:
+${1}%02d
+${2}%02d
+""".strip == "test:\n01\n02"
