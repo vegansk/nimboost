@@ -112,6 +112,17 @@ macro fmt*(fmt: static[string]): expr =
   ##   assert fmt"${1}%.3f" == "1.000"
   ##   assert fmt"Hello, $s!" == "Hello, string!"
 
+  proc esc(s: string): string {.inline.} =
+    result = newStringOfCap(s.len)
+    for ch in s:
+      case ch
+      of '\xA':
+        result.add("\\n")
+      of '\"':
+        result.add("\\\"")
+      else:
+        result.add(ch)
+
   var nodes: seq[NimNode] = @[]
   var fragments = toSeq(fmt.interpolatedFragments)
   for idx in 0..<fragments.len:
@@ -125,7 +136,7 @@ macro fmt*(fmt: static[string]): expr =
         nodes.del(nodes.len-1)
         handleFormat(fragments[idx-1][1], v, nodes)
       else:
-        nodes.add(parseExpr("\"" & v.replace("\n", "\\n") & "\""))
+        nodes.add(parseExpr("\"" & v.esc & "\""))
     else:
       nodes.add(parseExpr("$(" & v & ")"))
   result = newNimNode(nnkStmtList).add(

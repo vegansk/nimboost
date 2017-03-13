@@ -52,6 +52,7 @@ suite "richstring":
     # Multiline
     check: fmt"""
 test:
+"test":
 ${1}%02d
 ${2}%02d
-""".strip == "test:\n01\n02"
+""".strip == "test:\n\"test\":\n01\n02"
