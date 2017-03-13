@@ -258,12 +258,14 @@ suite "typeutils - data keyword":
     var z = newTypeC(c = 'a')
     z.b = "b"
 
-  test "show typeclass":
-    data TypeA1, show:
-      a: int
-      b: string
-      let c: pointer = nil
-    let x = initTypeA1(1, "a")
-    check: compiles($x)
-    when compiles($x):
-      check: $x == "TypeA1(a: 1, b: a, c: ...)"
+  when not defined(js):
+    # See https://github.com/nim-lang/Nim/issues/5517
+    test "show typeclass":
+      data TypeA1, show:
+        a: int
+        b: string
+        let c: pointer = nil
+      let x = initTypeA1(1, "a")
+      check: compiles($x)
+      when compiles($x):
+        check: $x == "TypeA1(a: 1, b: a, c: ...)"

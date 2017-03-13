@@ -7,7 +7,7 @@ import limits, strutils
 proc strToUInt64*(s: string, radix = 10): uint64 {.raises: ValueError.} =
   let d = s.strip
   result = 0
-  var prev = 0'u64
+  var prev = result
   var i = 0
   var dl = d.len
   if dl > 0 and s[i] == '+':
