@@ -280,3 +280,7 @@ suite "typeutils - data keyword":
     when compiles(x.copyImm(a = 2)):
       let y = x.copyImm(a = 2)
       check: y.a == 2 and y.b == "b" and y.c == 'c'
+
+    check: compiles(newGlobalDataRef(1).copyGlobalDataRef(a = 2))
+    when compiles(newGlobalDataRef(1).copyGlobalDataRef(a = 2)):
+      check: newGlobalDataRef(1).copyGlobalDataRef(a = 2).a == 2

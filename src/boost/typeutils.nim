@@ -743,7 +743,7 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
 proc genCopyMacro(t: Type): NimNode {.compileTime.} =
   let consName = newStrLitNode(t.getConstructorName)
   let macroName = if t.header.exportOption.exportAdditionalProcs:
-                    prefix(ident("copy" & t.header.name), "*")
+                    postfix(ident("copy" & t.header.name), "*")
                   else:
                    ident("copy" & t.header.name)
   let fields = newNimNode(nnkBracket)
@@ -753,7 +753,6 @@ proc genCopyMacro(t: Type): NimNode {.compileTime.} =
     macro `macroName`(args: varargs[untyped]): untyped =
       expectKind args, nnkArgList
       expectMinLen args, 1
-      expectKind args[0], nnkSym
       var fields = `fields`
       for i in 1..<args.len:
         expectKind args[i], nnkExprEqExpr

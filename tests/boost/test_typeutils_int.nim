@@ -10,5 +10,5 @@ when compiles(GlobalX.genConstructor):
 data GlobalData, exported:
   a: int
 
-data GlobalDataRef ref object, exported:
+data GlobalDataRef ref object, exported, copy:
   a: int
