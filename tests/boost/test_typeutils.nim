@@ -269,3 +269,14 @@ suite "typeutils - data keyword":
       check: compiles($x)
       when compiles($x):
         check: $x == "TypeA1(a: 1, b: a, c: ...)"
+
+  test "copy macro":
+    data Imm, copy:
+      a: int
+      b: string
+      c = 'c'
+    let x = initImm(1, "b")
+    check: compiles(x.copyImm(a = 2))
+    when compiles(x.copyImm(a = 2)):
+      let y = x.copyImm(a = 2)
+      check: y.a == 2 and y.b == "b" and y.c == 'c'

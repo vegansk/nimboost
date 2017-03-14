@@ -80,6 +80,7 @@ type
 
   GeneratorOptions = object
     toString: bool
+    copy: bool
 
   TypeHeader = object
     ## The description of the generated type
@@ -119,9 +120,11 @@ type
   TypeHierarchy = seq[Type]
 
 proc newGeneratorOptions(
-  toString: bool
+  toString = false,
+  copy = false
 ): GeneratorOptions =
   result.toString = toString
+  result.copy = copy
 
 proc newTypeHeader(
   name: string,
@@ -459,7 +462,7 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
       GenericParams.none,
       Constructor.none,
       ExportNone,
-      newGeneratorOptions(toString = false)
+      newGeneratorOptions()
     )
   of nnkInfix:
     expectKind head[0], nnkIdent
@@ -476,7 +479,7 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
         pgp,
         Constructor.none,
         ExportNone,
-        newGeneratorOptions(toString = false)
+        newGeneratorOptions()
       )
     elif head[0].`$` == "ref":
       expectLen head, 3
@@ -498,7 +501,7 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
         GenericParams.none,
         Constructor.none,
         ExportNone,
-        newGeneratorOptions(toString = false)
+        newGeneratorOptions()
       )
     else:
       error "Wrong data header syntax: " & treeRepr(head)
@@ -517,7 +520,7 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
       GenericParams.none,
       Constructor.none,
       ExportNone,
-      newGeneratorOptions(toString = false)
+      newGeneratorOptions()
     )
   else:
     error "Unexpected header: " & treeRepr(head)
@@ -526,6 +529,8 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
       result.exportOption = ExportAll
     elif m.kind == nnkIdent and $m == "show":
       result.generatorOptions.toString = true
+    elif m.kind == nnkIdent and $m == "copy":
+      result.generatorOptions.copy = true
     else:
       error "Unknown data type modifier: " & repr(m)
 
@@ -638,18 +643,21 @@ proc fillProcGenericParams(p: NimNode, t: Type) =
   if t.header.genericParams.isSome:
     p[2] = genGenericParams(t.header.genericParams.get)
 
+proc getConstructorName(t: Type): string =
+  if t.header.constructor.isSome and t.header.constructor.get.name.isSome:
+    t.header.constructor.get.name.get
+  else:
+    if t.header.isRef:
+      "new" & t.header.name
+    else:
+      "init" & t.header.name
+
 proc genDataConstructor(t: Type): NimNode {.compileTime.} =
   # Constructor must use all the fields from the object and all of it's
   # ancestors
   let fields = t.getTypeHierarchy.fields
   let nameI = ident(t.header.name)
-  let procName = if t.header.constructor.isSome and t.header.constructor.get.name.isSome:
-               t.header.constructor.get.name.get
-             else:
-               if t.header.isRef:
-                 "new" & t.header.name
-               else:
-                 "init" & t.header.name
+  let procName = t.getConstructorName
   let procNameI = if t.header.exportOption.exportConstructor: postfix(ident(procName), "*") else: ident(procName)
 
   var params = newSeq[NimNode]()
@@ -732,10 +740,44 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
 
   fillProcGenericParams(result[0], t)
 
+proc genCopyMacro(t: Type): NimNode {.compileTime.} =
+  let consName = newStrLitNode(t.getConstructorName)
+  let macroName = if t.header.exportOption.exportAdditionalProcs:
+                    prefix(ident("copy" & t.header.name), "*")
+                  else:
+                   ident("copy" & t.header.name)
+  let fields = newNimNode(nnkBracket)
+  for f in t.fields:
+    fields.add(newNimNode(nnkPar).add(newStrLitNode(f.name), parseExpr("nil.NimNode")))
+  result = quote do:
+    macro `macroName`(args: varargs[untyped]): untyped =
+      expectKind args, nnkArgList
+      expectMinLen args, 1
+      expectKind args[0], nnkSym
+      var fields = `fields`
+      for i in 1..<args.len:
+        expectKind args[i], nnkExprEqExpr
+        expectKind args[i][0], nnkIdent
+        for j in 0..<fields.len:
+          if fields[j][0] == $(args[i][0]):
+            fields[j][1] = args[i][1]
+      let s = genSym(nskVar)
+      let call = newCall(ident(`consName`))
+      for f in fields:
+        if f[1].isNil:
+          call.add(newDotExpr(s, ident(f[0])))
+        else:
+          call.add(f[1])
+      return newNimNode(nnkStmtListExpr)
+      .add(newVarStmt(s, args[0]))
+      .add(call)
+
 proc genAdditionalProcs(t: Type): NimNode {.compileTime.} =
   result = newStmtList()
   if t.header.generatorOptions.toString:
     result.add(genShowProc(t))
+  if t.header.generatorOptions.copy:
+    result.add(genCopyMacro(t))
 
 var lastType {.compileTime.} = Type()
 var typesTable {.compileTime.} = newSeq[(NimNode, Type)]()
@@ -798,10 +840,3 @@ macro data*(args: varargs[untyped]): untyped =
   for i in 0..<(args.len-2):
     m[i] = args[i+1]
   result = dataPreImpl(args[0], args[^1], m)
-
-# dumpTree:
-#   type
-#     A = object
-#       a: int
-#     ARef = ref object
-#       a: int
