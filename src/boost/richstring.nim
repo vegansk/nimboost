@@ -114,8 +114,10 @@ macro fmt*(fmt: static[string]): expr =
 
   proc esc(s: string): string {.inline.} =
     result = newStringOfCap(s.len)
-    for ch in s:
+    for ch in s.replace("\xD\xA", "\\n").replace("\xA\xD", "\n"):
       case ch
+      of '\xD':
+        result.add("\\n")
       of '\xA':
         result.add("\\n")
       of '\"':
