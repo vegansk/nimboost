@@ -41,7 +41,8 @@ suite "Parsers":
     check: "10".strToInt(10) == 10
     check: "a".strToInt(16) == 10
     check: "A".strToInt(16) == 10
-    check: "deadbeef".strToInt(16) == 0xdeadbeef
+    check: "deadbeef".strToUInt(16) == 0xdeadbeef'u
+    expect(ValueError): discard "deadbeef".strToInt32(16)
 
   test "Enums":
     check: parseEnum[logging.Level]("lvlAll") == logging.lvlAll

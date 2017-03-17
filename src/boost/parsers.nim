@@ -41,19 +41,19 @@ proc strToUInt*(s: string, radix = 10): uint {.raises: ValueError.} =
 proc strToUInt32*(s: string, radix = 10): uint32 {.raises: ValueError.} =
   let res = strToUInt64(s, radix)
   if res > uint32.max.uint64:
-    raise newException(ValueError, "Overflow: " & s & " can't fit into uint")
+    raise newException(ValueError, "Overflow: " & s & " can't fit into uint32")
   result = res.uint32
 
 proc strToUInt16*(s: string, radix = 10): uint16 {.raises: ValueError.} =
   let res = strToUInt64(s, radix)
   if res > uint16.max.uint64:
-    raise newException(ValueError, "Overflow: " & s & " can't fit into uint")
+    raise newException(ValueError, "Overflow: " & s & " can't fit into uint16")
   result = res.uint16
 
 proc strToUInt8*(s: string, radix = 10): uint8 {.raises: ValueError.} =
   let res = strToUInt64(s, radix)
   if res > uint8.max.uint64:
-    raise newException(ValueError, "Overflow: " & s & " can't fit into uint")
+    raise newException(ValueError, "Overflow: " & s & " can't fit into uint8")
   result = res.uint8
 
 proc strToInt64*(s: string, radix = 10): int64 {.raises: ValueError.} =
@@ -69,25 +69,25 @@ proc strToInt*(s: string, radix = 10): int {.raises: ValueError.} =
   let res = strToInt64(s, radix)
   when sizeof(int) != 8:
     if res < int.min.int64 or res > int.max.int64:
-      raise newException(ValueError, "Overflow: " & s & " can't fit into uint")
+      raise newException(ValueError, "Overflow: " & s & " can't fit into int")
   result = res.int
 
 proc strToInt32*(s: string, radix = 10): int32 {.raises: ValueError.} =
   let res = strToInt64(s, radix)
   if res < int32.min.int64 or res > int32.max.int64:
-    raise newException(ValueError, "Overflow: " & s & " can't fit into uint")
+    raise newException(ValueError, "Overflow: " & s & " can't fit into int32")
   result = res.int32
 
 proc strToInt16*(s: string, radix = 10): int16 {.raises: ValueError.} =
   let res = strToInt64(s, radix)
   if res < int16.min.int64 or res > int16.max.int64:
-    raise newException(ValueError, "Overflow: " & s & " can't fit into uint")
+    raise newException(ValueError, "Overflow: " & s & " can't fit into int16")
   result = res.int16
 
 proc strToInt8*(s: string, radix = 10): int8 {.raises: ValueError.} =
   let res = strToInt64(s, radix)
   if res < int8.min.int64 or res > int8.max.int64:
-    raise newException(ValueError, "Overflow: " & s & " can't fit into uint")
+    raise newException(ValueError, "Overflow: " & s & " can't fit into int8")
   result = res.int8
 
 {.pop.}
