@@ -1,5 +1,7 @@
 import unittest, boost.parsers, boost.limits
 
+from logging import nil
+
 template checkInt(typ: untyped, fun: untyped): untyped =
   check: fun($typ.min) == typ.min
   check: fun($(typ.min + 13)) == typ.min + 13
@@ -40,3 +42,10 @@ suite "Parsers":
     check: "a".strToInt(16) == 10
     check: "A".strToInt(16) == 10
     check: "deadbeef".strToInt(16) == 0xdeadbeef
+
+  test "Enums":
+    check: parseEnum[logging.Level]("lvlAll") == logging.lvlAll
+    expect(ValueError): discard parseEnum[logging.Level]("lvlAlll")
+    check: parseEnum[bool]("true") == true
+    check: parseEnum[bool]("false") == false
+    expect(ValueError): discard parseEnum[bool]("unknown")

@@ -1,6 +1,6 @@
 ## Miscellaneous parse tools
 
-import limits, strutils
+import limits, strutils, typetraits
 
 {.push overflowChecks: off.}
 
@@ -91,3 +91,18 @@ proc strToInt8*(s: string, radix = 10): int8 {.raises: ValueError.} =
   result = res.int8
 
 {.pop.}
+
+proc parseEnum*[T: bool|enum](s: string): T =
+  when T is bool:
+    case s.strip.toLower
+    of "true":
+      result = true
+    of "false":
+      result = false
+    else:
+      raise newException(ValueError, "Unknown " & name(T) & " value " & s)
+  else:
+    for i in T:
+      if i.`$`.toLower == s.strip.toLower:
+        return i
+    raise newException(ValueError, "Unknown " & name(T) & " value " & s)
