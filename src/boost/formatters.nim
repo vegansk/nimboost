@@ -2,18 +2,19 @@
 
 import strutils
 
-proc mkDigit(v: int): string {.inline.} =
+proc mkDigit(v: int, lowerCase: bool): string {.inline.} =
   doAssert(v < 26)
   if v < 10:
     result = $chr(ord('0') + v)
   else:
-    result = $chr(ord('A') + v - 10)
+    result = $chr(ord(if lowerCase: 'a' else: 'A') + v - 10)
 
-proc intToStr*(n: SomeNumber, radix = 10, len = 0, fill = ' '): string =
+proc intToStr*(n: SomeNumber, radix = 10, len = 0, fill = ' ', lowerCase = false): string =
   ## Converts ``n`` to string. If ``n`` is `SomeReal`, it casts to `int64`.
   ## Conversion is done using ``radix``. If result's length is lesser then
   ## ``len``, it aligns result to the right with ``fill`` char.
   ## If ``len`` is negative, the result is aligned to the left.
+  ## If `lowerCase` is true, formatted string will be in the lower case.
   when n is SomeUnsignedInt:
     var v = n.uint64
     let s = false
@@ -30,7 +31,7 @@ proc intToStr*(n: SomeNumber, radix = 10, len = 0, fill = ' '): string =
     while v > (type(v))0:
       let d = v mod (type(v))radix
       v = v div (type(v))radix
-      result.add(mkDigit(d.int))
+      result.add(mkDigit(d.int, lowerCase))
     for idx in 0..<(result.len div 2):
       swap result[idx], result[result.len - idx - 1]
   var length = abs(len)

@@ -29,15 +29,15 @@ proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char] 
   if t != "":
     result.prec = strToInt(t)
 
-proc handleIntFormat(exp: string, fmtp: string, radix: int): NimNode {.compileTime.} =
+proc handleIntFormat(exp: string, fmtp: string, radix: int, lowerCase = false): NimNode {.compileTime.} =
   let (maxLen, fillChar) = parseIntFmt(fmtp)
-  result = newCall(bindSym"intToStr", parseExpr(exp), newLit(radix), newLit(maxLen), newLit(fillChar))
+  result = newCall(bindSym"intToStr", parseExpr(exp), newLit(radix), newLit(maxLen), newLit(fillChar), newLit(lowerCase))
 
 proc handleDFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   result = handleIntFormat(exp, fmtp, 10)
 
-proc handleXFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
-  result = handleIntFormat(exp, fmtp, 16)
+proc handleXFormat(exp: string, fmtp: string, lowerCase: bool): NimNode {.compileTime.} =
+  result = handleIntFormat(exp, fmtp, 16, lowerCase)
 
 proc handleFFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
@@ -59,7 +59,7 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
     nodes.add(parseExpr("$(" & exp & ")"))
     nodes.add(newLit(fmt[1..^1]))
   else:
-    const formats = {'d', 'f', 's', 'x', 'e'}
+    const formats = {'d', 'f', 's', 'x', 'X', 'e'}
     var idx = 1
     var fmtm = ""
     var fmtp = ""
@@ -77,8 +77,8 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
       case fmtm
       of "d":
         nodes.add(handleDFormat(exp, fmtp))
-      of "x":
-        nodes.add(handleXFormat(exp, fmtp))
+      of "x", "X":
+        nodes.add(handleXFormat(exp, fmtp, lowerCase = fmtm == "x"))
       of "f":
         nodes.add(handleFFormat(exp, fmtp))
       of "e":
@@ -93,7 +93,7 @@ macro fmt*(fmt: static[string]): expr =
   ## String interpolation macro with scala-like format specifiers.
   ## Knows about:
   ## * `d` - decimal number formatter
-  ## * `h` - hex number formatter
+  ## * `x`, `X` - hex number formatter
   ## * `f` - float number formatter
   ## * `e` - float number formatter (scientific form)
   ## * `s` - string formatter
@@ -107,7 +107,7 @@ macro fmt*(fmt: static[string]): expr =
   ##   let s = "string"
   ##   assert fmt"${s[0..2].toUpper}" == "STR"
   ##   assert fmt"${-10}%04d" == "-010"
-  ##   assert fmt"0x${10}%02x" == "0x0A"
+  ##   assert fmt"0x${10}%02X" == "0x0A"
   ##   assert fmt"""${"test"}%-5s""" == "test "
   ##   assert fmt"${1}%.3f" == "1.000"
   ##   assert fmt"Hello, $s!" == "Hello, string!"

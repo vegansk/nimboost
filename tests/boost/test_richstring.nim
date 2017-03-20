@@ -22,8 +22,10 @@ suite "richstring":
     check: fmt"${-10}%-04d" == "-100"
     check: fmt"${-10}%4d" == " -10"
     check: fmt"${-10}%-4d" == "-10 "
-    check: fmt"${10}%x" == "A"
-    check: fmt"0x${10}%02x" == "0x0A"
+    check: fmt"${10}%x" == "a"
+    check: fmt"0x${10}%02x" == "0x0a"
+    check: fmt"${10}%X" == "A"
+    check: fmt"0x${10}%02X" == "0x0A"
 
     # String formatters
     check: fmt"""${"test"}%s""" == "test"
