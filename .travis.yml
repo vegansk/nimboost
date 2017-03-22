@@ -1,12 +1,11 @@
 language: c
 before_install:
   # Install nim
-  - git clone -b devel git://github.com/nim-lang/Nim.git
+  - git clone -b devel --depth 1 git://github.com/nim-lang/Nim.git
   - cd Nim
   - git clone --depth 1 git://github.com/nim-lang/csources
   - cd csources && sh build.sh
   - cd ..
-  - git checkout aa4260ffa86cf4059bad71587364194bef141de0
   - bin/nim c koch
   - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
   - ./koch boot -d:release
