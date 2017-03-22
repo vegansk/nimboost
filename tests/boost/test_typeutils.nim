@@ -284,3 +284,17 @@ suite "typeutils - data keyword":
     check: compiles(newGlobalDataRef(1).copyGlobalDataRef(a = 2))
     when compiles(newGlobalDataRef(1).copyGlobalDataRef(a = 2)):
       check: newGlobalDataRef(1).copyGlobalDataRef(a = 2).a == 2
+
+  test "Reserved words in type definition":
+    data RWTest:
+      `type`: string
+      `for` =  "b"
+      let `let`: string = "let"
+      var `var`: string
+      var `yield`: string = "yield"
+    let x = initRWTest(`type` = "type", `var` = "var", `for` = "for", `let` = "let", `yield` = "yield")
+    check: x.`type` == "type"
+    check: x.`var` == "var"
+    check: x.`for` == "for"
+    check: x.`let` == "let"
+    check: x.`yield` == "yield"

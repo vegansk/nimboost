@@ -541,7 +541,7 @@ proc parseFields(body: NimNode): Fields =
     case sdef.kind
     of nnkCall:
       expectLen sdef, 2
-      expectKind sdef[0], nnkIdent
+      expectKind sdef[0], {nnkIdent, nnkAccQuoted}
       expectKind sdef[1], nnkStmtList
       result.add newField(
         name = $sdef[0],
@@ -552,7 +552,7 @@ proc parseFields(body: NimNode): Fields =
       )
     of nnkAsgn:
       expectLen sdef, 2
-      expectKind sdef[0], nnkIdent
+      expectKind sdef[0], {nnkIdent, nnkAccQuoted}
       result.add newField(
         name = $sdef[0],
         `type` = "type(" & repr(sdef[1]) & ")",
