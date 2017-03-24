@@ -574,6 +574,8 @@ proc parseFields(body: NimNode): Fields =
       result.add newField(
         name, `type`, mutable, defValue, CaseBranches.none
       )
+    of nnkCommentStmt:
+      discard
     else:
       error "Unexpected field description: " & treeRepr(sdef)
 
