@@ -61,6 +61,7 @@ suite "typeutils - constructor":
         let b = newB(1)
         check: b.x == 1
 
+
   test "ref object":
     type XObj = object
       x: int
@@ -233,6 +234,31 @@ suite "typeutils - data keyword":
         y: T
       let c = initObj4(1, "a")
       check c.x == 1 and c.y == "a"
+
+    const isValidRef = compiles((
+      block:
+        data Obj5[T] ref object:
+          x: T
+    ))
+    check: isValidRef
+    when isValidRef:
+      data Obj5[T] ref object:
+        x: T
+      let d = newObj5(1)
+      check: d.x == 1
+    const isValidRefWithParent = compiles((
+      block:
+        data Obj5[T] ref object:
+          x: T
+        data Obj6[T,U] ref object of Obj5[T]:
+          y: U
+    ))
+    check: isValidRefWithParent
+    when isValidRefWithParent:
+      data Obj6[T,U] ref object of Obj5[T]:
+        y: U
+      let e = newObj6(1, "a")
+      check: e.x == 1 and e.y == "a"
 
   test "from example":
     data TypeA:

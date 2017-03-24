@@ -483,22 +483,25 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
       )
     elif head[0].`$` == "ref":
       expectLen head, 3
-      expectKind head[1], nnkIdent
+      let (name, gp) = parseType(head[1])
       expectKind head[2], {nnkObjectTy, nnkInfix}
-      var parent = string.none
+      var pname = string.none
+      var pgp = GenericParams.none
       if head[2].kind == nnkInfix:
         expectKind head[2][0], nnkIdent
         if head[2][0].`$` != "of":
           error "Wrong data header syntax: " & treeRepr(head)
         expectKind head[2][1], nnkObjectTy
-        parent = parseIdentOrDotExpr(head[2][2]).some
+        let (parent, parentgp) = parseParentType(head[2][2])
+        pname = parent.some
+        pgp = parentgp
       result = newTypeHeader(
-        $head[1],
-        GenericParams.none,
+        name,
+        gp,
         true,
         false,
-        parent,
-        GenericParams.none,
+        pname,
+        pgp,
         Constructor.none,
         ExportNone,
         newGeneratorOptions()
