@@ -344,3 +344,18 @@ suite "typeutils - data keyword":
     #     var tmv: TestModifiers
     #     discard tmv.`$`
     # ))
+
+  test "Sequences support":
+    data TypeWithSeq, show:
+      a: seq[int]
+      b = @["a"]
+
+    let x = initTypeWithSeq(@[1])
+    check: x.a == @[1] and x.b == @["a"]
+
+    data RefTypeWithSeq ref object, show:
+      let a: seq[int] = @[]
+      let b: seq[string] = @[]
+
+    let y = newRefTypeWithSeq(@[1])
+    check: y.a == @[1] and y.b == @[]
