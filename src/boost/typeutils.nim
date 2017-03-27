@@ -71,13 +71,23 @@ type
     ## Constructor description
     name: Option[string]
 
-  ExportOption = enum
+  ExportedThing = enum
     ## What to export?
-    ExportNone,
     ExportType,
     ExportFields,
-    ExportAll
+    ExportConstructor,
+    ExportShow,
+    ExportCopy
 
+  ExportOption = set[ExportedThing]
+
+const ExportAll: ExportOption = {
+  ExportType, ExportFields, ExportConstructor, ExportShow, ExportCopy
+}
+
+const ExportNone: ExportOption = {}
+
+type
   GeneratorOptions = object
     toString: bool
     copy: bool
@@ -147,6 +157,9 @@ proc newTypeHeader(
   result.generatorOptions = generatorOptions
   result.parentImpl = Type.none
 
+proc newConstructor(name: Option[string]): Constructor =
+  result.name = name
+
 proc newField(
   name,
   `type`: string,
@@ -198,16 +211,19 @@ proc fields(th: TypeHierarchy): Fields =
     result.add(t.fields)
 
 proc exportConstructor(o: ExportOption): bool =
-  o == ExportAll
+  ExportConstructor in o
 
 proc exportType(o: ExportOption): bool =
-  o >= ExportType
+  ExportType in o
 
 proc exportFields(o: ExportOption): bool =
-  o >= ExportFields
+  ExportFields in o
 
-proc exportAdditionalProcs(o: ExportOption): bool =
-  o >= ExportFields
+proc exportShow(o: ExportOption): bool =
+  ExportShow in o
+
+proc exportCopy(o: ExportOption): bool =
+  ExportCopy in o
 
 when false:
   proc parseTypeDef(t: NimNode): (TypeHeader, Fields) {.compileTime.} =
@@ -450,6 +466,40 @@ proc mkParentType(t: Type): NimNode {.compileTime.} =
   for p in t.header.parentGenericParams.get:
     result.add(ident(p))
 
+proc parseModifiers(header: var TypeHeader, modifiers: seq[NimNode]) =
+  template `-=`[T](r: var set[T], v: T) =
+    r = r - {v}
+  for m in modifiers:
+    if m.kind == nnkIdent and $m == "exported" or
+       m.kind == nnkCall and m[0].kind == nnkIdent and $m[0] == "exported":
+      header.exportOption = ExportAll
+      if(m.kind == nnkCall):
+        for i in 1..<m.len:
+          let mm = m[i]
+          case $mm
+          of "noconstructor":
+            header.exportOption -= ExportConstructor
+          of "noshow":
+            header.exportOption -= ExportShow
+          of "nocopy":
+            header.exportOption -= ExportCopy
+          of "nofields":
+            header.exportOption -= ExportFields
+          else:
+            error "Unknown export modifier: " & repr(mm)
+    elif m.kind == nnkIdent and $m == "show":
+      header.generatorOptions.toString = true
+    elif m.kind == nnkIdent and $m == "copy":
+      header.generatorOptions.copy = true
+    elif m.kind == nnkCall and m[0].kind == nnkIdent and m[0].`$` == "constructor":
+      if(m.len != 2 or m[1].kind != nnkIdent):
+        error "Wrong constructor modifier syntax: " & repr(m)
+      else:
+        header.constructor = newConstructor(m[1].`$`.some).some
+    else:
+      error "Unknown data type modifier: " & repr(m)
+
+
 proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
   case head.kind
   of nnkIdent:
@@ -527,15 +577,7 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
     )
   else:
     error "Unexpected header: " & treeRepr(head)
-  for m in modifiers:
-    if m.kind == nnkIdent and $m == "exported":
-      result.exportOption = ExportAll
-    elif m.kind == nnkIdent and $m == "show":
-      result.generatorOptions.toString = true
-    elif m.kind == nnkIdent and $m == "copy":
-      result.generatorOptions.copy = true
-    else:
-      error "Unknown data type modifier: " & repr(m)
+  parseModifiers(result, modifiers)
 
 proc parseFields(body: NimNode): Fields =
   expectKind body, nnkStmtList
@@ -718,7 +760,7 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
   let typeIdent = t.mkType
   let nameStr = newStrLitNode(t.header.name)
   var procIdent = newNimNode(nnkAccQuoted).add(ident"$")
-  if t.header.exportOption.exportAdditionalProcs:
+  if t.header.exportOption.exportShow:
     procIdent = postfix(procIdent, "*")
   var vIdent = ident"v"
   var resIdent = ident"res"
@@ -747,7 +789,7 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
 
 proc genCopyMacro(t: Type): NimNode {.compileTime.} =
   let consName = newStrLitNode(t.getConstructorName)
-  let macroName = if t.header.exportOption.exportAdditionalProcs:
+  let macroName = if t.header.exportOption.exportCopy:
                     postfix(ident("copy" & t.header.name), "*")
                   else:
                    ident("copy" & t.header.name)

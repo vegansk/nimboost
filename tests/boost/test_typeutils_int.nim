@@ -12,3 +12,6 @@ data GlobalData, exported:
 
 data GlobalDataRef ref object, exported, copy:
   a: int
+
+data TestModifiers, exported(noconstructor,nocopy,noshow,nofields), constructor(testModifiers), copy, show:
+  a: int

@@ -324,3 +324,23 @@ suite "typeutils - data keyword":
     check: x.`for` == "for"
     check: x.`let` == "let"
     check: x.`yield` == "yield"
+
+  test "Modifiers":
+    check: declared(TestModifiers)
+    check: not declared(testModifiers)
+    check: not compiles((
+      block:
+        var tmv: TestModifiers
+        discard tmv.a
+    ))
+    check: not compiles((
+      block:
+        var tmv: TestModifiers
+        discard tmv.copyTestModifiers(a = 1)
+    ))
+    #TODO: It works because of standard `$` implementation
+    # check: not compiles((
+    #   block:
+    #     var tmv: TestModifiers
+    #     discard tmv.`$`
+    # ))
