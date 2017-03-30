@@ -367,7 +367,18 @@ suite "typeutils - data keyword":
       Branch2:
         b: string
         c = 123
-    let x = initBranch1(100).copyBranch1(a = 10)
-    check: x.a == 10
-    let y = initBranch2("test").copyBranch2(c = 1000)
-    check: y.b == "test" and y.c == 1000
+    let x1 = initBranch1(100).copyBranch1(a = 10)
+    check: x1.a == 10
+    let y1 = initBranch2("test").copyBranch2(c = 1000)
+    check: y1.b == "test" and y1.c == 1000
+
+    data ADT2 ref object, show, copy:
+      a: int
+      Branch3:
+        b = "b"
+      Branch4:
+        c = 'c'
+    let x2 = newBranch3(10).copyBranch3(b = "bbb")
+    check: x2.a == 10 and x2.b == "bbb"
+    let y2 = newBranch4(10).copyBranch4(a = 100)
+    check: y2.a == 100 and y2.c == 'c'

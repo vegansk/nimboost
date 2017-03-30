@@ -202,11 +202,25 @@ proc `$`(t: Type): string =
   else:
     "Type(" & t.header.name & ")"
 
-proc getBranchesFields(t: Type): Fields =
+proc getAllBranchesFields(t: Type): Fields =
   result = newSeq[Field]()
-  for b in t.fields:
-    assert b.branch
-    result.add(b.fields)
+  for f in t.fields:
+    if f.branch:
+      result.add(f.fields)
+    else:
+      result.add(f)
+
+proc getOnlyFields(t: Type): Fields =
+  result = newSeq[Field]()
+  for f in t.fields:
+    if not f.branch:
+      result.add(f)
+
+proc getBranches(t: Type): Fields =
+  result = newSeq[Field]()
+  for f in t.fields:
+    if f.branch:
+      result.add(f)
 
 proc getTypeHierarchy(t: Type): TypeHierarchy =
   ## Returns the list of types, base type first
@@ -222,8 +236,9 @@ proc fields(th: TypeHierarchy): Fields =
     result.add(t.fields)
 
 proc hasBranches(t: Type): bool =
-  if t.fields.len > 0:
-    result = t.fields[0].branch
+  for f in t.fields:
+    if f.branch:
+      return true
 
 proc hasParent(t: Type): bool =
   result = t.header.parentName.isSome
@@ -685,15 +700,15 @@ proc genBranchRecList(t: Type, branch: Fields): NimNode {.compileTime.} =
 proc genDataTypeBody(t: Type): NimNode {.compileTime.} =
   var recList: NimNode
   if t.hasBranches:
-    recList = newNimNode(nnkRecList)
+    recList = genBranchRecList(t, t.getOnlyFields)
     let recCase = newNimNode(nnkRecCase)
-    recList.add(recCase)
     recCase.add(newIdentDefs(ident"kind", ident(t.getAdtEnumName)))
-    for b in t.fields:
+    for f in t.getBranches:
       let ofBranch = newNimNode(nnkOfBranch)
-      ofBranch.add(ident(b.name))
-      ofBranch.add(genBranchRecList(t, b.fields))
+      ofBranch.add(ident(f.name))
+      ofBranch.add(genBranchRecList(t, f.fields))
       recCase.add(ofBranch)
+    recList.add(recCase)
   else:
     recList = genBranchRecList(t, t.fields)
   result = newNimNode(nnkObjectTy).add(newEmptyNode())
@@ -735,7 +750,7 @@ proc genAdtEnum(t: Type): NimNode {.compileTime.} =
   result.add(newEmptyNode())
   let enumTy = newNimNode(nnkEnumTy)
   enumTy.add(newEmptyNode())
-  for b in t.fields:
+  for b in t.getBranches:
     enumTy.add(ident(b.name))
   result.add(enumTy)
 
@@ -770,8 +785,10 @@ proc getConstructorName(t: Type, branch: Option[Field] = Field.none): string =
       "init" & name
 
 proc getBranchFields(t: Type, branch: Field): Fields =
-  result = newSeqOfCap[Field](branch.fields.len + 1)
+  let onlyFields = t.getOnlyFields
+  result = newSeqOfCap[Field](onlyFields.len + branch.fields.len + 1)
   result.add(t.mkBranchField)
+  result.add(onlyFields)
   result.add(branch.fields)
 
 proc genDataConstructor(t: Type, branch: Option[Field] = Field.none): NimNode {.compileTime.} =
@@ -814,7 +831,7 @@ proc genDataConstructors(t: Type): NimNode {.compileTime.} =
   if t.hasBranches:
     result = newStmtList()
     # ADT has as many constructors as branches
-    for b in t.fields:
+    for b in t.getBranches:
       result.add genDataConstructor(t, b.some)
   else:
     result = genDataConstructor(t)
@@ -833,7 +850,7 @@ proc genDataGetter(t: Type, fields: Fields, fieldIdx: int): NimNode {.compileTim
   fillProcGenericParams(result[0], t)
 
 proc genDataGetters(t: Type): NimNode {.compileTime.} =
-  let fields = if t.hasBranches: t.getBranchesFields else: t.getTypeHierarchy.fields
+  let fields = if t.hasBranches: t.getAllBranchesFields else: t.getTypeHierarchy.fields
   result = newStmtList()
   for i in 0..<fields.len:
     if not fields[i].mutable:
@@ -870,9 +887,8 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
   var body: NimNode
   if t.hasBranches:
     body = newStmtList()
-    for b in t.fields:
-      assert b.branch
-      let branchBody = genParamConcatenation(resIdent, vIdent, b.fields)
+    for b in t.getBranches:
+      let branchBody = genParamConcatenation(resIdent, vIdent, t.getOnlyFields & b.fields)
       let branchIdent = ident(b.name)
       body.add quote do:
         if `vIdent`.kind == `branchIdent`:
@@ -896,7 +912,7 @@ proc genCopyMacro(t: Type, branch: Option[Field] = Field.none): NimNode {.compil
                     postfix(ident("copy" & typeName), "*")
                   else:
                    ident("copy" & typeName)
-  let fields = if branch.isSome: branch.get.fields else: t.getTypeHierarchy.fields
+  let fields = if branch.isSome: t.getOnlyFields & branch.get.fields else: t.getTypeHierarchy.fields
   let fieldsNode = newNimNode(nnkBracket)
   for f in fields:
     fieldsNode.add(newNimNode(nnkPar).add(newStrLitNode(f.name), parseExpr("nil.NimNode")))
@@ -991,8 +1007,8 @@ proc checkFields(fields: Fields, allowBranches = true) {.compileTime.} =
       checkFields(f.fields, false)
     else:
       hasFields = true
-  if hasBranches and hasFields:
-    error "Mixin of fields and branches is not allowed"
+      if hasBranches:
+        error "Common fields must be placed before branches"
 
 proc dataPreImpl(head, body: NimNode, modifiers: seq[NimNode]): NimNode {.compileTime.} =
   # Parses type header, fields, then
