@@ -108,19 +108,15 @@ type
   Field = object
     ## Field description
     name*: string ## Field's name
-    `type`*: string ## Field's type
-    mutable*: bool ## Is the field mutable?
-    defValue*: Option[string] ## Optional default value
-    caseBranches*: Option[CaseBranches] ## Branches of case field
+    case branch*: bool
+    of true:
+      fields*: seq[Field]
+    else:
+      `type`*: string ## Field's type
+      mutable*: bool ## Is the field mutable?
+      defValue*: Option[string] ## Optional default value
 
   Fields = seq[Field]
-
-  CaseBranch = object
-    ## Description of the case field's branch
-    caseCond*: Option[string] ## Optional (for ``else`` branch) condition
-    fields*: seq[Field]
-
-  CaseBranches = seq[CaseBranch]
 
   Type = ref object
     ## Type description
@@ -164,14 +160,23 @@ proc newField(
   name,
   `type`: string,
   mutable: bool,
-  defValue: Option[string],
-  caseBranches: Option[CaseBranches]
-): Field =
-  result.name = name
-  result.`type` = `type`
-  result.mutable = mutable
-  result.defValue = defValue
-  result.caseBranches = caseBranches
+  defValue: Option[string]
+): Field = Field(
+  name: name,
+  branch: false,
+  `type`: `type`,
+  mutable: mutable,
+  defValue: defValue
+)
+
+proc newBranch(
+  name: string,
+  fields: seq[Field]
+): Field = Field(
+  name: name,
+  branch: true,
+  fields: fields
+)
 
 proc realName(f: Field): string =
   if f.mutable:
@@ -197,6 +202,12 @@ proc `$`(t: Type): string =
   else:
     "Type(" & t.header.name & ")"
 
+proc getBranchesFields(t: Type): Fields =
+  result = newSeq[Field]()
+  for b in t.fields:
+    assert b.branch
+    result.add(b.fields)
+
 proc getTypeHierarchy(t: Type): TypeHierarchy =
   ## Returns the list of types, base type first
   result = @[]
@@ -209,6 +220,24 @@ proc fields(th: TypeHierarchy): Fields =
   result = newSeq[Field]()
   for t in th:
     result.add(t.fields)
+
+proc hasBranches(t: Type): bool =
+  if t.fields.len > 0:
+    result = t.fields[0].branch
+
+proc hasParent(t: Type): bool =
+  result = t.header.parentName.isSome
+
+proc getAdtEnumName(t: Type): string =
+  result = t.header.name & "Kind"
+
+proc mkBranchField(t: Type): Field =
+  newField(
+    name = "kind",
+    `type` = t.getAdtEnumName,
+    mutable = true,
+    defValue = string.none
+  )
 
 proc exportConstructor(o: ExportOption): bool =
   ExportConstructor in o
@@ -579,7 +608,14 @@ proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
     error "Unexpected header: " & treeRepr(head)
   parseModifiers(result, modifiers)
 
-proc parseFields(body: NimNode): Fields =
+proc isBranch(n: NimNode): bool {.compileTime.} =
+  expectKind n, nnkStmtList
+  result = true
+  for ch in n:
+    if ch.kind notin {nnkCall, nnkAsgn, nnkLetSection, nnkVarSection}:
+      return false
+
+proc parseFields(body: NimNode): Fields {.compileTime.} =
   expectKind body, nnkStmtList
   result = newSeq[Field]()
   for sdef in body:
@@ -588,13 +624,19 @@ proc parseFields(body: NimNode): Fields =
       expectLen sdef, 2
       expectKind sdef[0], {nnkIdent, nnkAccQuoted}
       expectKind sdef[1], nnkStmtList
-      result.add newField(
-        name = $sdef[0],
-        `type` = sdef[1][0].repr(),
-        mutable = false,
-        defValue = string.none,
-        caseBranches = CaseBranches.none
-      )
+      # We need to check, if it's a branch (all the children of sdef[1] must be of type {nnkCall, nnkAsgn, nnkLetSection, nnkVarSection})
+      if sdef[1].isBranch:
+        result.add newBranch(
+          name = $sdef[0],
+          fields = parseFields(sdef[1])
+        )
+      else:
+        result.add newField(
+          name = $sdef[0],
+          `type` = sdef[1][0].repr(),
+          mutable = false,
+          defValue = string.none
+        )
     of nnkAsgn:
       expectLen sdef, 2
       expectKind sdef[0], {nnkIdent, nnkAccQuoted}
@@ -602,8 +644,7 @@ proc parseFields(body: NimNode): Fields =
         name = $sdef[0],
         `type` = "type(" & repr(sdef[1]) & ")",
         mutable = false,
-        defValue = repr(sdef[1]).some,
-        caseBranches = CaseBranches.none
+        defValue = repr(sdef[1]).some
       )
     of nnkLetSection, nnkVarSection:
       expectKind sdef[0], nnkIdentDefs
@@ -617,7 +658,7 @@ proc parseFields(body: NimNode): Fields =
       let defValue = if idef[2].kind == nnkEmpty: string.none
                      else: repr(idef[2]).some
       result.add newField(
-        name, `type`, mutable, defValue, CaseBranches.none
+        name, `type`, mutable, defValue
       )
     of nnkCommentStmt:
       discard
@@ -632,16 +673,29 @@ when defined(insideTheTest):
      TypeHeader,
      Field,
      Fields,
-     CaseBranch,
-     CaseBranches,
      Type
 
-proc genDataTypeBody(t: Type): NimNode {.compileTime.} =
-  let recList = newNimNode(nnkRecList)
-  for field in t.fields:
+proc genBranchRecList(t: Type, branch: Fields): NimNode {.compileTime.} =
+  result = newNimNode(nnkRecList)
+  for field in branch:
     let ident = if t.header.exportOption.exportFields: postfix(ident(field.realName), "*") else: ident(field.realName)
     let identDefs = newIdentDefs(ident, parseExpr(field.`type`))
-    recList.add(identDefs)
+    result.add(identDefs)
+
+proc genDataTypeBody(t: Type): NimNode {.compileTime.} =
+  var recList: NimNode
+  if t.hasBranches:
+    recList = newNimNode(nnkRecList)
+    let recCase = newNimNode(nnkRecCase)
+    recList.add(recCase)
+    recCase.add(newIdentDefs(ident"kind", ident(t.getAdtEnumName)))
+    for b in t.fields:
+      let ofBranch = newNimNode(nnkOfBranch)
+      ofBranch.add(ident(b.name))
+      ofBranch.add(genBranchRecList(t, b.fields))
+      recCase.add(ofBranch)
+  else:
+    recList = genBranchRecList(t, t.fields)
   result = newNimNode(nnkObjectTy).add(newEmptyNode())
   # Inheritance
   if t.header.parentName.isNone:
@@ -652,8 +706,7 @@ proc genDataTypeBody(t: Type): NimNode {.compileTime.} =
   else:
     result.add(newNimNode(nnkOfInherit).add(t.mkParentType))
   result.add(recList)
-  if t.header.isRef
-:
+  if t.header.isRef:
     result = newNimNode(nnkRefTy).add(result)
 
 proc genDataTypeNameNode(typeHeader: TypeHeader): NimNode {.compileTime.} =
@@ -673,7 +726,23 @@ proc genGenericParams(ps: GenericParams): NimNode {.compileTime.} =
   for p in ps:
     result.add(newIdentDefs(ident($p), newEmptyNode()))
 
+proc genAdtEnum(t: Type): NimNode {.compileTime.} =
+  result = newNimNode(nnkTypeDef)
+  if t.header.exportOption.exportFields():
+    result.add(postfix(ident(t.getAdtEnumName), "*"))
+  else:
+    result.add(ident(t.getAdtEnumName))
+  result.add(newEmptyNode())
+  let enumTy = newNimNode(nnkEnumTy)
+  enumTy.add(newEmptyNode())
+  for b in t.fields:
+    enumTy.add(ident(b.name))
+  result.add(enumTy)
+
 proc genDataType(t: Type): NimNode {.compileTime.} =
+  result = newNimNode(nnkTypeSection)
+  if t.hasBranches:
+    result.add(genAdtEnum(t))
   let `type` = newNimNode(nnkTypeDef)
   # Type name
   `type`.add(genDataTypeNameNode(t.header))
@@ -684,32 +753,37 @@ proc genDataType(t: Type): NimNode {.compileTime.} =
     `type`.add(newEmptyNode())
   # Type implementation
   `type`.add(genDataTypeBody(t))
-  result = newNimNode(nnkTypeSection).add(`type`)
+  result.add(`type`)
 
 proc fillProcGenericParams(p: NimNode, t: Type) =
   if t.header.genericParams.isSome:
     p[2] = genGenericParams(t.header.genericParams.get)
 
-proc getConstructorName(t: Type): string =
-  if t.header.constructor.isSome and t.header.constructor.get.name.isSome:
+proc getConstructorName(t: Type, branch: Option[Field] = Field.none): string =
+  if branch.isNone and t.header.constructor.isSome and t.header.constructor.get.name.isSome:
     t.header.constructor.get.name.get
   else:
+    let name = if branch.isSome: branch.get.name else: t.header.name
     if t.header.isRef:
-      "new" & t.header.name
+      "new" & name
     else:
-      "init" & t.header.name
+      "init" & name
 
-proc genDataConstructor(t: Type): NimNode {.compileTime.} =
-  # Constructor must use all the fields from the object and all of it's
-  # ancestors
-  let fields = t.getTypeHierarchy.fields
-  let nameI = ident(t.header.name)
-  let procName = t.getConstructorName
+proc getBranchFields(t: Type, branch: Field): Fields =
+  result = newSeqOfCap[Field](branch.fields.len + 1)
+  result.add(t.mkBranchField)
+  result.add(branch.fields)
+
+proc genDataConstructor(t: Type, branch: Option[Field] = Field.none): NimNode {.compileTime.} =
+  let fields = if branch.isSome: t.getBranchFields(branch.get) else: t.getTypeHierarchy.fields
+  let procName = t.getConstructorName(branch)
   let procNameI = if t.header.exportOption.exportConstructor: postfix(ident(procName), "*") else: ident(procName)
 
   var params = newSeq[NimNode]()
   params.add(t.mkType)
-  for field in fields:
+  let start = if branch.isSome: 1 else: 0
+  for idx in start..<fields.len:
+    let field = fields[idx]
     params.add(newIdentDefs(
       ident(field.name),
       parseExpr(field.`type`),
@@ -722,17 +796,28 @@ proc genDataConstructor(t: Type): NimNode {.compileTime.} =
   let body = newStmtList()
   if t.header.isRef:
     body.add newCall(ident"new", ident"result")
-  for field in fields:
+  for idx in 0..<fields.len:
+    let field = fields[idx]
+    let value = if branch.isSome and idx == 0: ident(branch.get.name) else: ident(field.name)
     body.add newAssignment(
       newDotExpr(
         ident"result",
         ident(field.realName)
       ),
-      ident(field.name)
+      value
     )
 
   result = newProc(procNameI, params, body)
   fillProcGenericParams(result, t)
+
+proc genDataConstructors(t: Type): NimNode {.compileTime.} =
+  if t.hasBranches:
+    result = newStmtList()
+    # ADT has as many constructors as branches
+    for b in t.fields:
+      result.add genDataConstructor(t, b.some)
+  else:
+    result = genDataConstructor(t)
 
 proc genDataGetter(t: Type, fields: Fields, fieldIdx: int): NimNode {.compileTime.} =
   let f = fields[fieldIdx]
@@ -748,7 +833,7 @@ proc genDataGetter(t: Type, fields: Fields, fieldIdx: int): NimNode {.compileTim
   fillProcGenericParams(result[0], t)
 
 proc genDataGetters(t: Type): NimNode {.compileTime.} =
-  let fields = t.getTypeHierarchy.fields
+  let fields = if t.hasBranches: t.getBranchesFields else: t.getTypeHierarchy.fields
   result = newStmtList()
   for i in 0..<fields.len:
     if not fields[i].mutable:
@@ -756,27 +841,44 @@ proc genDataGetters(t: Type): NimNode {.compileTime.} =
   if result.len == 0:
     result = newEmptyNode()
 
-proc genShowProc(t: Type): NimNode {.compileTime.} =
-  let typeIdent = t.mkType
-  let nameStr = newStrLitNode(t.header.name)
-  var procIdent = newNimNode(nnkAccQuoted).add(ident"$")
-  if t.header.exportOption.exportShow:
-    procIdent = postfix(procIdent, "*")
-  var vIdent = ident"v"
-  var resIdent = ident"res"
-  var body = newStmtList()
-
-  for i in 0..<t.fields.len:
-    let f = t.fields[i]
+proc genParamConcatenation(resIdent: NimNode, vIdent: NimNode, fields: Fields): NimNode =
+  result = newStmtList()
+  for i in 0..<fields.len:
+    let f = fields[i]
     let fIdent = ident(f.name)
     let fName = newStrLitNode(f.name)
     let splitter = if i == 0: newStrLitNode("") else: newStrLitNode(", ")
-    body.add quote do:
+    result.add quote do:
       `resIdent` &= `splitter` & `fName` & ": "
       when compiles($(`vIdent`.`fIdent`)):
         `resIdent` &= $(`vIdent`.`fIdent`)
       else:
         `resIdent` &= "..."
+
+proc genShowProc(t: Type): NimNode {.compileTime.} =
+  let typeIdent = t.mkType
+  var vIdent = ident"v"
+  var resIdent = ident"res"
+  var nameStr: NimNode
+  if t.hasBranches:
+    nameStr = quote do: $(`vIdent`.kind)
+  else:
+    nameStr = newStrLitNode(t.header.name)
+  var procIdent = newNimNode(nnkAccQuoted).add(ident"$")
+  if t.header.exportOption.exportShow:
+    procIdent = postfix(procIdent, "*")
+  var body: NimNode
+  if t.hasBranches:
+    body = newStmtList()
+    for b in t.fields:
+      assert b.branch
+      let branchBody = genParamConcatenation(resIdent, vIdent, b.fields)
+      let branchIdent = ident(b.name)
+      body.add quote do:
+        if `vIdent`.kind == `branchIdent`:
+          `branchBody`
+  else:
+    body = genParamConcatenation(resIdent, vIdent, t.fields)
 
   result = quote do:
     proc `procIdent`(`vIdent`: `typeIdent`): string =
@@ -787,20 +889,22 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
 
   fillProcGenericParams(result[0], t)
 
-proc genCopyMacro(t: Type): NimNode {.compileTime.} =
-  let consName = newStrLitNode(t.getConstructorName)
-  let macroName = if t.header.exportOption.exportCopy:
-                    postfix(ident("copy" & t.header.name), "*")
+proc genCopyMacro(t: Type, branch: Option[Field] = Field.none): NimNode {.compileTime.} =
+  let consName = newStrLitNode(t.getConstructorName(branch))
+  let typeName = if branch.isSome: branch.get.name else: t.header.name
+  let macroIdent = if t.header.exportOption.exportCopy:
+                    postfix(ident("copy" & typeName), "*")
                   else:
-                   ident("copy" & t.header.name)
-  let fields = newNimNode(nnkBracket)
-  for f in t.fields:
-    fields.add(newNimNode(nnkPar).add(newStrLitNode(f.name), parseExpr("nil.NimNode")))
+                   ident("copy" & typeName)
+  let fields = if branch.isSome: branch.get.fields else: t.getTypeHierarchy.fields
+  let fieldsNode = newNimNode(nnkBracket)
+  for f in fields:
+    fieldsNode.add(newNimNode(nnkPar).add(newStrLitNode(f.name), parseExpr("nil.NimNode")))
   result = quote do:
-    macro `macroName`(args: varargs[untyped]): untyped =
+    macro `macroIdent`(args: varargs[untyped]): untyped =
       expectKind args, nnkArgList
       expectMinLen args, 1
-      var fields = `fields`
+      var fields = `fieldsNode`
       for i in 1..<args.len:
         expectKind args[i], nnkExprEqExpr
         expectKind args[i][0], nnkIdent
@@ -818,12 +922,20 @@ proc genCopyMacro(t: Type): NimNode {.compileTime.} =
       .add(newVarStmt(s, args[0]))
       .add(call)
 
+proc genCopyMacros(t: Type): NimNode {.compileTime.} =
+  if t.hasBranches:
+    result = newStmtList()
+    for b in t.fields:
+      result.add genCopyMacro(t, b.some)
+  else:
+    result = genCopyMacro(t)
+
 proc genAdditionalProcs(t: Type): NimNode {.compileTime.} =
   result = newStmtList()
   if t.header.generatorOptions.toString:
     result.add(genShowProc(t))
   if t.header.generatorOptions.copy:
-    result.add(genCopyMacro(t))
+    result.add(genCopyMacros(t))
 
 var lastType {.compileTime.} = Type()
 var typesTable {.compileTime.} = newSeq[(NimNode, Type)]()
@@ -857,7 +969,7 @@ proc dataImpl(parentSymO: Option[NimNode]): NimNode {.compileTime.} =
 
   result = newStmtList()
   result.add(genDataType(lastType))
-  result.add(genDataConstructor(lastType))
+  result.add(genDataConstructors(lastType))
   result.add(genDataGetters(lastType))
   result.add(genAdditionalProcs(lastType))
   result.add(newCall(bindSym"appendType", ident(lastType.header.name)))
@@ -868,13 +980,30 @@ macro dataImplWithParent(parent: typed): untyped =
 macro dataImplWithoutParent(): untyped =
   result = dataImpl(NimNode.none)
 
-proc dataPreImpl(head, body: NimNode, modifiers: seq[NimNode]): NimNode =
+proc checkFields(fields: Fields, allowBranches = true) {.compileTime.} =
+  var hasBranches = false
+  var hasFields = false
+  for f in fields:
+    if f.branch:
+      hasBranches = true
+      if not allowBranches:
+        error "Recursive branches are not allowed"
+      checkFields(f.fields, false)
+    else:
+      hasFields = true
+  if hasBranches and hasFields:
+    error "Mixin of fields and branches is not allowed"
+
+proc dataPreImpl(head, body: NimNode, modifiers: seq[NimNode]): NimNode {.compileTime.} =
   # Parses type header, fields, then
   # calls the real generator macro, that has typed parent
   let header = parseTypeHeader(head, modifiers)
   let fields = parseFields(body)
+  checkFields(fields)
   lastType = newType(header, fields)
-  if header.parentName.isSome:
+  if lastType.hasBranches and lastType.hasParent:
+    error "Algebraic data types can't have parent"
+  if lastType.hasParent:
     result = newCall(bindSym"dataImplWithParent", mkIdentOrDotExpr(header.parentName.get))
   else:
     result = newCall(bindSym"dataImplWithoutParent")

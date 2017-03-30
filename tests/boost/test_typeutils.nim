@@ -359,3 +359,15 @@ suite "typeutils - data keyword":
 
     let y = newRefTypeWithSeq(@[1])
     check: y.a == @[1] and y.b == @[]
+
+  test "ADT":
+    data ADT1, show, copy:
+      Branch1:
+        a: int
+      Branch2:
+        b: string
+        c = 123
+    let x = initBranch1(100).copyBranch1(a = 10)
+    check: x.a == 10
+    let y = initBranch2("test").copyBranch2(c = 1000)
+    check: y.b == "test" and y.c == 1000
