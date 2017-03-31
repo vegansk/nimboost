@@ -1059,9 +1059,46 @@ proc genFromJsonProc(t: Type): NimNode {.compileTime.} =
       `body`
   fillProcGenericParams(result[0], t)
 
+proc genToJsonField(v, res: NimNode, f: Field): NimNode =
+  let nameS = newStrLitNode(f.name)
+  let nameI = ident(f.realName)
+  result = quote do:
+    `res`[`nameS`] = toJson(`v`.`nameI`)
+
+proc genToJsonProc(t: Type): NimNode {.compileTime.} =
+  let typeIdent = t.mkType
+  let procName =
+    if t.header.exportOption.exportJson: postfix(ident"toJson", "*")
+    else: ident"toJson"
+  let v = ident"v"
+
+  let body = newStmtList()
+  let res = ident"result"
+
+  if t.isAdt:
+    body.add genToJsonField(v, res, t.mkBranchField)
+    for b in t.getBranches:
+      let branchI = ident(b.name)
+      let br = newStmtList()
+      for f in b.getThisBranchFields(t):
+        br.add genToJsonField(v, res, f)
+      body.add quote do:
+        if `v`.kind == `branchI`:
+          `br`
+  else:
+    for f in t.getTypeHierarchy.fields:
+      body.add genToJsonField(v, res, f)
+
+  result = quote do:
+    proc `procName`(`v`: `typeIdent`): JsonNode {.used.} =
+      `res` = newJObject()
+      `body`
+  fillProcGenericParams(result[0], t)
+
 proc genJsonProcs(t: Type): NimNode {.compileTime.} =
   result = newStmtList()
   result.add genFromJsonProc(t)
+  result.add genToJsonProc(t)
 
 proc genAdditionalProcs(t: Type): NimNode {.compileTime.} =
   result = newStmtList()
@@ -1152,7 +1189,3 @@ macro data*(args: varargs[untyped]): untyped =
   for i in 0..<(args.len-2):
     m[i] = args[i+1]
   result = dataPreImpl(args[0], args[^1], m)
-
-dumpTree:
-  proc `==`*(a, b: int): bool =
-    discard

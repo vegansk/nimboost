@@ -21,11 +21,20 @@ proc fromJson*(_: typedesc[string], n: JsonNode): string =
   else:
     return n.getStr
 
+proc toJson*(v: string): JsonNode =
+  newJString(v)
+
 proc fromJson*(_: typedesc[int], n: JsonNode): int =
   if n == nil:
     raise newFieldException("Can't get field of type int")
   else:
     return n.getNum.int
 
+proc toJson*(v: int): JsonNode =
+  newJInt(v)
+
 proc fromJson*[T: enum](_: typedesc[T], n: JsonNode): T =
   parsers.parseEnum[T](n.getStr)
+
+proc toJson*[T: enum](v: T): JsonNode =
+  ($v).toJson

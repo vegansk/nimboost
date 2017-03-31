@@ -103,6 +103,6 @@ proc parseEnum*[T: bool|enum](s: string): T =
       raise newException(ValueError, "Unknown " & name(T) & " value " & s)
   else:
     for i in T:
-      if i.`$`.toLower == s.strip.toLower:
+      if i.`$`.toLowerAscii == s.strip.toLowerAscii:
         return i
     raise newException(ValueError, "Unknown " & name(T) & " value " & s)

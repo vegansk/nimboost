@@ -425,6 +425,10 @@ suite "typeutils - data keyword":
     expect(FieldException):
       discard fromJson(Test[string], parseJson"""{ "A": "a", "B": 1 }""")
 
+    let j1 = x1.toJson
+    check: j1["a"].getStr == "a"
+    check: j1["b"].getNum == 1
+
     data TestAdt, json:
       Br1:
         a: int
@@ -435,3 +439,6 @@ suite "typeutils - data keyword":
     check: x2.a == 1
     expect(FieldException):
       discard fromJson(TestAdt, parseJson"""{ "A": "a", "B": 1 }""")
+    let j2 = x2.toJson
+    check: j2["kind"].getStr == "Br1"
+    check: j2["a"].getNum == 1
