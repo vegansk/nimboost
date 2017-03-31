@@ -1,7 +1,8 @@
 import boost.typeutils,
        unittest,
        macros,
-       ./test_typeutils_int
+       ./test_typeutils_int,
+       patty
 
 suite "typeutils - constructor":
   test "simple object":
@@ -382,3 +383,17 @@ suite "typeutils - data keyword":
     check: x2.a == 10 and x2.b == "bbb"
     let y2 = newBranch4(10).copyBranch4(a = 100)
     check: y2.a == 100 and y2.c == 'c'
+
+  test "Patty compatibility":
+    data Shape, show, copy:
+      Circle:
+        r: float
+      Rectangle:
+        w: float
+        h: float
+
+    match initCircle(10.0):
+      Circle(r):
+        check: r == 10.0
+      Rectangle:
+        check: false
