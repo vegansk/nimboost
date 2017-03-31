@@ -77,12 +77,14 @@ type
     ExportFields,
     ExportConstructor,
     ExportShow,
-    ExportCopy
+    ExportCopy,
+    ExportEq,
+    ExportJson,
 
   ExportOption = set[ExportedThing]
 
 const ExportAll: ExportOption = {
-  ExportType, ExportFields, ExportConstructor, ExportShow, ExportCopy
+  ExportType, ExportFields, ExportConstructor, ExportShow, ExportCopy, ExportEq, ExportJson
 }
 
 const ExportNone: ExportOption = {}
@@ -91,6 +93,8 @@ type
   GeneratorOptions = object
     toString: bool
     copy: bool
+    eq: bool
+    json: bool
 
   TypeHeader = object
     ## The description of the generated type
@@ -127,10 +131,14 @@ type
 
 proc newGeneratorOptions(
   toString = false,
-  copy = false
+  copy = false,
+  eq = false,
+  json = false
 ): GeneratorOptions =
   result.toString = toString
   result.copy = copy
+  result.eq = eq
+  result.json = json
 
 proc newTypeHeader(
   name: string,
@@ -216,6 +224,9 @@ proc getOnlyFields(t: Type): Fields =
     if not f.branch:
       result.add(f)
 
+proc getThisBranchFields(b: Field, t: Type): Fields =
+  result = t.getOnlyFields & b.fields
+
 proc getBranches(t: Type): Fields =
   result = newSeq[Field]()
   for f in t.fields:
@@ -235,7 +246,7 @@ proc fields(th: TypeHierarchy): Fields =
   for t in th:
     result.add(t.fields)
 
-proc hasBranches(t: Type): bool =
+proc isAdt(t: Type): bool =
   for f in t.fields:
     if f.branch:
       return true
@@ -268,6 +279,12 @@ proc exportShow(o: ExportOption): bool =
 
 proc exportCopy(o: ExportOption): bool =
   ExportCopy in o
+
+proc exportEq(o: ExportOption): bool =
+  ExportEq in o
+
+proc exportJson(o: ExportOption): bool =
+  ExportJson in o
 
 when false:
   proc parseTypeDef(t: NimNode): (TypeHeader, Fields) {.compileTime.} =
@@ -529,12 +546,20 @@ proc parseModifiers(header: var TypeHeader, modifiers: seq[NimNode]) =
             header.exportOption -= ExportCopy
           of "nofields":
             header.exportOption -= ExportFields
+          of "noeq":
+            header.exportOption -= ExportEq
+          of "nojson":
+            header.exportOption -= ExportJson
           else:
             error "Unknown export modifier: " & repr(mm)
     elif m.kind == nnkIdent and $m == "show":
       header.generatorOptions.toString = true
     elif m.kind == nnkIdent and $m == "copy":
       header.generatorOptions.copy = true
+    elif m.kind == nnkIdent and $m == "eq":
+      header.generatorOptions.eq = true
+    elif m.kind == nnkIdent and $m == "json":
+      header.generatorOptions.json = true
     elif m.kind == nnkCall and m[0].kind == nnkIdent and m[0].`$` == "constructor":
       if(m.len != 2 or m[1].kind != nnkIdent):
         error "Wrong constructor modifier syntax: " & repr(m)
@@ -542,7 +567,6 @@ proc parseModifiers(header: var TypeHeader, modifiers: seq[NimNode]) =
         header.constructor = newConstructor(m[1].`$`.some).some
     else:
       error "Unknown data type modifier: " & repr(m)
-
 
 proc parseTypeHeader(head: NimNode, modifiers: seq[NimNode]): TypeHeader =
   case head.kind
@@ -699,7 +723,7 @@ proc genBranchRecList(t: Type, branch: Fields): NimNode {.compileTime.} =
 
 proc genDataTypeBody(t: Type): NimNode {.compileTime.} =
   var recList: NimNode
-  if t.hasBranches:
+  if t.isAdt:
     recList = genBranchRecList(t, t.getOnlyFields)
     let recCase = newNimNode(nnkRecCase)
     recCase.add(newIdentDefs(ident"kind", ident(t.getAdtEnumName)))
@@ -756,7 +780,7 @@ proc genAdtEnum(t: Type): NimNode {.compileTime.} =
 
 proc genDataType(t: Type): NimNode {.compileTime.} =
   result = newNimNode(nnkTypeSection)
-  if t.hasBranches:
+  if t.isAdt:
     result.add(genAdtEnum(t))
   let `type` = newNimNode(nnkTypeDef)
   # Type name
@@ -826,9 +850,11 @@ proc genDataConstructor(t: Type, branch: Option[Field] = Field.none): NimNode {.
 
   result = newProc(procNameI, params, body)
   fillProcGenericParams(result, t)
+  let used = newNimNode(nnkPragma).add(ident"used")
+  result[4] = used
 
 proc genDataConstructors(t: Type): NimNode {.compileTime.} =
-  if t.hasBranches:
+  if t.isAdt:
     result = newStmtList()
     # ADT has as many constructors as branches
     for b in t.getBranches:
@@ -850,7 +876,7 @@ proc genDataGetter(t: Type, fields: Fields, fieldIdx: int): NimNode {.compileTim
   fillProcGenericParams(result[0], t)
 
 proc genDataGetters(t: Type): NimNode {.compileTime.} =
-  let fields = if t.hasBranches: t.getAllBranchesFields else: t.getTypeHierarchy.fields
+  let fields = if t.isAdt: t.getAllBranchesFields else: t.getTypeHierarchy.fields
   result = newStmtList()
   for i in 0..<fields.len:
     if not fields[i].mutable:
@@ -877,7 +903,7 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
   var vIdent = ident"v"
   var resIdent = ident"res"
   var nameStr: NimNode
-  if t.hasBranches:
+  if t.isAdt:
     nameStr = quote do: $(`vIdent`.kind)
   else:
     nameStr = newStrLitNode(t.header.name)
@@ -885,10 +911,10 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
   if t.header.exportOption.exportShow:
     procIdent = postfix(procIdent, "*")
   var body: NimNode
-  if t.hasBranches:
+  if t.isAdt:
     body = newStmtList()
     for b in t.getBranches:
-      let branchBody = genParamConcatenation(resIdent, vIdent, t.getOnlyFields & b.fields)
+      let branchBody = genParamConcatenation(resIdent, vIdent, b.getThisBranchFields(t))
       let branchIdent = ident(b.name)
       body.add quote do:
         if `vIdent`.kind == `branchIdent`:
@@ -897,7 +923,7 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
     body = genParamConcatenation(resIdent, vIdent, t.fields)
 
   result = quote do:
-    proc `procIdent`(`vIdent`: `typeIdent`): string =
+    proc `procIdent`(`vIdent`: `typeIdent`): string {.used.} =
       var `resIdent` = `nameStr` & "("
       `body`
       `resIdent` &= ")"
@@ -912,12 +938,12 @@ proc genCopyMacro(t: Type, branch: Option[Field] = Field.none): NimNode {.compil
                     postfix(ident("copy" & typeName), "*")
                   else:
                    ident("copy" & typeName)
-  let fields = if branch.isSome: t.getOnlyFields & branch.get.fields else: t.getTypeHierarchy.fields
+  let fields = if branch.isSome: branch.get.getThisBranchFields(t) else: t.getTypeHierarchy.fields
   let fieldsNode = newNimNode(nnkBracket)
   for f in fields:
     fieldsNode.add(newNimNode(nnkPar).add(newStrLitNode(f.name), parseExpr("nil.NimNode")))
   result = quote do:
-    macro `macroIdent`(args: varargs[untyped]): untyped =
+    macro `macroIdent`(args: varargs[untyped]): untyped {.used.} =
       expectKind args, nnkArgList
       expectMinLen args, 1
       var fields = `fieldsNode`
@@ -939,12 +965,51 @@ proc genCopyMacro(t: Type, branch: Option[Field] = Field.none): NimNode {.compil
       .add(call)
 
 proc genCopyMacros(t: Type): NimNode {.compileTime.} =
-  if t.hasBranches:
+  if t.isAdt:
     result = newStmtList()
     for b in t.fields:
       result.add genCopyMacro(t, b.some)
   else:
     result = genCopyMacro(t)
+
+proc genFieldsComparison(x, y: NimNode, fields: Fields): NimNode {.compileTime.} =
+  result = newStmtList()
+  for f in fields:
+    let name = ident(f.name)
+    result.add quote do:
+      if `x`.`name` != `y`.`name`:
+        return false
+
+proc genEqProc(t: Type): NimNode {.compileTime.} =
+  let x = ident"x"
+  let y = ident"y"
+
+  var body: NimNode
+  if t.isAdt:
+    body = newStmtList()
+    body.add quote do:
+      if `x`.kind != `y`.kind:
+        return false
+    for b in t.getBranches:
+      let kind = ident(b.name)
+      let comp = genFieldsComparison(x, y, b.getThisBranchFields(t))
+      body.add quote do:
+        if `x`.kind == `kind`:
+          `comp`
+  else:
+    body = genFieldsComparison(x, y, t.getTypeHierarchy.fields)
+
+  let typeIdent = t.mkType
+  let nameI = if t.header.exportOption.exportEq: postfix(parseExpr("`==`"), "*")  else: parseExpr("`==`")
+  let res = ident"result"
+  result = quote do:
+    proc `nameI`(`x`, `y`: `typeIdent`): bool {.used.} =
+      `res` = true
+      `body`
+  fillProcGenericParams(result[0], t)
+
+proc genJsonProcs(t: Type): NimNode {.compileTime.} =
+  newEmptyNode()
 
 proc genAdditionalProcs(t: Type): NimNode {.compileTime.} =
   result = newStmtList()
@@ -952,6 +1017,10 @@ proc genAdditionalProcs(t: Type): NimNode {.compileTime.} =
     result.add(genShowProc(t))
   if t.header.generatorOptions.copy:
     result.add(genCopyMacros(t))
+  if t.header.generatorOptions.eq:
+    result.add(genEqProc(t))
+  if t.header.generatorOptions.json:
+    result.add(genJsonProcs(t))
 
 var lastType {.compileTime.} = Type()
 var typesTable {.compileTime.} = newSeq[(NimNode, Type)]()
@@ -997,17 +1066,17 @@ macro dataImplWithoutParent(): untyped =
   result = dataImpl(NimNode.none)
 
 proc checkFields(fields: Fields, allowBranches = true) {.compileTime.} =
-  var hasBranches = false
+  var isAdt = false
   var hasFields = false
   for f in fields:
     if f.branch:
-      hasBranches = true
+      isAdt = true
       if not allowBranches:
         error "Recursive branches are not allowed"
       checkFields(f.fields, false)
     else:
       hasFields = true
-      if hasBranches:
+      if isAdt:
         error "Common fields must be placed before branches"
 
 proc dataPreImpl(head, body: NimNode, modifiers: seq[NimNode]): NimNode {.compileTime.} =
@@ -1017,7 +1086,7 @@ proc dataPreImpl(head, body: NimNode, modifiers: seq[NimNode]): NimNode {.compil
   let fields = parseFields(body)
   checkFields(fields)
   lastType = newType(header, fields)
-  if lastType.hasBranches and lastType.hasParent:
+  if lastType.isAdt and lastType.hasParent:
     error "Algebraic data types can't have parent"
   if lastType.hasParent:
     result = newCall(bindSym"dataImplWithParent", mkIdentOrDotExpr(header.parentName.get))
@@ -1031,3 +1100,7 @@ macro data*(args: varargs[untyped]): untyped =
   for i in 0..<(args.len-2):
     m[i] = args[i+1]
   result = dataPreImpl(args[0], args[^1], m)
+
+dumpTree:
+  proc `==`*(a, b: int): bool =
+    discard

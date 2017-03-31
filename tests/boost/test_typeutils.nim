@@ -277,7 +277,7 @@ suite "typeutils - data keyword":
     data TypeB[C,D] of TypeA:
       c: C
       var d: D
-    var y = initTypeB(100, "aaa", 'a', 1.0)
+    discard initTypeB(100, "aaa", 'a', 1.0)
 
     data TypeC ref object of TypeA:
       c: char
@@ -397,3 +397,18 @@ suite "typeutils - data keyword":
         check: r == 10.0
       Rectangle:
         check: false
+
+  test "Eq typeclass":
+    data Test[T], eq:
+      a: T
+      b = "b"
+    check: initTest(1) == initTest(1, "b")
+    check: initTest(1) != initTest(1, "a")
+
+    data TestAdt, eq:
+      Br1:
+        a: int
+      Br2:
+        b: string
+    check: initBr2("a") == initBr2("a")
+    check: initBr2("a") != initBr1(1)
