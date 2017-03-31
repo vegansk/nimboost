@@ -808,7 +808,7 @@ proc getConstructorName(t: Type, branch: Option[Field] = Field.none): string =
     else:
       "init" & name
 
-proc getBranchFields(t: Type, branch: Field): Fields =
+proc getBranchFieldsWithKind(t: Type, branch: Field): Fields =
   let onlyFields = t.getOnlyFields
   result = newSeqOfCap[Field](onlyFields.len + branch.fields.len + 1)
   result.add(t.mkBranchField)
@@ -816,7 +816,7 @@ proc getBranchFields(t: Type, branch: Field): Fields =
   result.add(branch.fields)
 
 proc genDataConstructor(t: Type, branch: Option[Field] = Field.none): NimNode {.compileTime.} =
-  let fields = if branch.isSome: t.getBranchFields(branch.get) else: t.getTypeHierarchy.fields
+  let fields = if branch.isSome: t.getBranchFieldsWithKind(branch.get) else: t.getTypeHierarchy.fields
   let procName = t.getConstructorName(branch)
   let procNameI = if t.header.exportOption.exportConstructor: postfix(ident(procName), "*") else: ident(procName)
 
@@ -1008,8 +1008,60 @@ proc genEqProc(t: Type): NimNode {.compileTime.} =
       `body`
   fillProcGenericParams(result[0], t)
 
+proc genFromJsonField(j, res: NimNode, f: Field): NimNode =
+  let nameS = newStrLitNode(f.name)
+  let nameI = ident(f.realName)
+  let fType = parseExpr(f.`type`)
+  let fTypeS = newStrLitNode(f.`type`)
+  result = quote do:
+    try:
+      if not `j`.contains(`nameS`):
+        when `fType` is ref:
+          `res`.`nameI` = fromJson(`fType`, nil)
+        else:
+          raise newFieldException("Can't get value of type " & `fTypeS`)
+      else:
+        `res`.`nameI` = fromJson(`fType`, `j`[`nameS`])
+    except FieldException:
+      let e = cast[ref FieldException](getCurrentException())
+      e.addPath(`nameS`)
+      raise
+
+proc genFromJsonProc(t: Type): NimNode {.compileTime.} =
+  let typeIdent = t.mkType
+  let procName =
+    if t.header.exportOption.exportJson: postfix(ident"fromJson", "*")
+    else: ident"fromJson"
+  let j = ident"j"
+
+  let body = newStmtList()
+  let res = ident"result"
+  if t.header.isRef:
+    body.add quote do:
+      new `res`
+
+  if t.isAdt:
+    body.add genFromJsonField(j, res, t.mkBranchField)
+    for b in t.getBranches:
+      let branchI = ident(b.name)
+      let br = newStmtList()
+      for f in b.getThisBranchFields(t):
+        br.add genFromJsonField(j, res, f)
+      body.add quote do:
+        if `res`.kind == `branchI`:
+          `br`
+  else:
+    for f in t.getTypeHierarchy.fields:
+      body.add genFromJsonField(j, res, f)
+
+  result = quote do:
+    proc `procName`(t: typedesc[`typeIdent`], `j`: JsonNode): `typeIdent` {.used.} =
+      `body`
+  fillProcGenericParams(result[0], t)
+
 proc genJsonProcs(t: Type): NimNode {.compileTime.} =
-  newEmptyNode()
+  result = newStmtList()
+  result.add genFromJsonProc(t)
 
 proc genAdditionalProcs(t: Type): NimNode {.compileTime.} =
   result = newStmtList()

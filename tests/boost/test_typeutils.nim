@@ -1,8 +1,10 @@
 import boost.typeutils,
+       boost.jsonserialize,
        unittest,
        macros,
        ./test_typeutils_int,
-       patty
+       patty,
+       json
 
 suite "typeutils - constructor":
   test "simple object":
@@ -412,3 +414,24 @@ suite "typeutils - data keyword":
         b: string
     check: initBr2("a") == initBr2("a")
     check: initBr2("a") != initBr1(1)
+
+  test "Json typeclass":
+    data Test[T], json:
+      a: T
+      b: int
+
+    let x1 = fromJson(Test[string], parseJson"""{ "a": "a", "b": 1 }""")
+    check: x1.a == "a" and x1.b == 1
+    expect(FieldException):
+      discard fromJson(Test[string], parseJson"""{ "A": "a", "B": 1 }""")
+
+    data TestAdt, json:
+      Br1:
+        a: int
+      Br2:
+        b: string
+
+    let x2 = TestAdt.fromJson(parseJson("""{"kind": "Br1", "a": 1}"""))
+    check: x2.a == 1
+    expect(FieldException):
+      discard fromJson(TestAdt, parseJson"""{ "A": "a", "B": 1 }""")
