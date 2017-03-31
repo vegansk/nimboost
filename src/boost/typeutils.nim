@@ -1062,8 +1062,14 @@ proc genFromJsonProc(t: Type): NimNode {.compileTime.} =
 proc genToJsonField(v, res: NimNode, f: Field): NimNode =
   let nameS = newStrLitNode(f.name)
   let nameI = ident(f.realName)
+  let fType = parseExpr(f.`type`)
+  let tmp = genSym(nskVar)
   result = quote do:
-    `res`[`nameS`] = toJson(`v`.`nameI`)
+    var `tmp` = toJson(`v`.`nameI`)
+    when compiles(`tmp`.isNil):
+      if not `tmp`.isNil: `res`[`nameS`] = `tmp`
+    else:
+      `res`[`nameS`] = `tmp`
 
 proc genToJsonProc(t: Type): NimNode {.compileTime.} =
   let typeIdent = t.mkType
