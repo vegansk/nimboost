@@ -442,3 +442,14 @@ suite "typeutils - data keyword":
     let j2 = x2.toJson
     check: j2["kind"].getStr == "Br1"
     check: j2["a"].getNum == 1
+
+  test "ADT with empty branch":
+    data ADT, copy, eq, show, json:
+      WithData:
+        a: int
+      WithoutData:
+        discard
+
+    check: ADT.fromJson(initWithoutData().copyWithoutData().toJson()).kind == WithoutData
+    check: initWithoutData() == initWithoutData()
+    check: initWithoutData().`$` == "WithoutData()"

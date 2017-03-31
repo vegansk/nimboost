@@ -651,7 +651,7 @@ proc isBranch(n: NimNode): bool {.compileTime.} =
   expectKind n, nnkStmtList
   result = true
   for ch in n:
-    if ch.kind notin {nnkCall, nnkAsgn, nnkLetSection, nnkVarSection}:
+    if ch.kind notin {nnkCall, nnkAsgn, nnkLetSection, nnkVarSection, nnkDiscardStmt}:
       return false
 
 proc parseFields(body: NimNode): Fields {.compileTime.} =
@@ -699,7 +699,7 @@ proc parseFields(body: NimNode): Fields {.compileTime.} =
       result.add newField(
         name, `type`, mutable, defValue
       )
-    of nnkCommentStmt:
+    of nnkCommentStmt, nnkDiscardStmt:
       discard
     else:
       error "Unexpected field description: " & treeRepr(sdef)
@@ -946,7 +946,7 @@ proc genCopyMacro(t: Type, branch: Option[Field] = Field.none): NimNode {.compil
     macro `macroIdent`(args: varargs[untyped]): untyped {.used.} =
       expectKind args, nnkArgList
       expectMinLen args, 1
-      var fields = `fieldsNode`
+      var fields: seq[(string, NimNode)] = @`fieldsNode`
       for i in 1..<args.len:
         expectKind args[i], nnkExprEqExpr
         expectKind args[i][0], nnkIdent
