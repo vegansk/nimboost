@@ -38,3 +38,9 @@ proc fromJson*[T: enum](_: typedesc[T], n: JsonNode): T =
 
 proc toJson*[T: enum](v: T): JsonNode =
   ($v).toJson
+
+proc fromJson*(_: typedesc[JsonNode], n: JsonNode): JsonNode =
+  n
+
+proc toJson*(n: JsonNode): JsonNode =
+  n
