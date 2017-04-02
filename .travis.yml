@@ -9,8 +9,11 @@ before_install:
   - bin/nim c koch
   - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
   - ./koch boot -d:release
+  - ./koch tools -d:release
   - export PATH=$PWD/bin:$PATH
+  - nimble update
   - cd ..
+  - nimble install -d -y
 script:
   - nim test
   
