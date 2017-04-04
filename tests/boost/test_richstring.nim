@@ -60,3 +60,14 @@ test:
 ${1}%02d
 ${2}%02d
 """.strip == "test:\n\"test\":\n01\n02"
+
+    check: fmt("a\r\n\r\lb") == "a\r\n\r\lb"
+    check: fmt"a\r\n\r\lb" == "a\r\n\r\lb"
+    check: fmt("a\n\r\l\rb") == "a\n\r\l\rb"
+    check: fmt"a\n\r\l\rb" == "a\n\r\l\rb"
+
+    check: fmt"""foo
+
+    bar""" == """foo
+
+    bar"""

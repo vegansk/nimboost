@@ -114,20 +114,16 @@ macro fmt*(fmt: static[string]): expr =
 
   proc esc(s: string): string {.inline.} =
     result = newStringOfCap(s.len)
-    var prevCh = ' '
     for ch in s:
       case ch
       of '\xD':
-        if prevCh != '\xA':
-          result.add("\\n")
+        result.add("\\x0D")
       of '\xA':
-        if prevCh != '\xD':
-          result.add("\\n")
+        result.add("\\x0A")
       of '\"':
         result.add("\\\"")
       else:
         result.add(ch)
-      prevCh = ch
 
   var nodes: seq[NimNode] = @[]
   var fragments = toSeq(fmt.interpolatedFragments)
