@@ -33,10 +33,10 @@ proc newNode[K,V](): Node[K,V] =
 
 proc newNode[K](c: Color, l: Node[K,Unit], k: K, v: Unit,
                 r: Node[K,Unit]): Node[K,Unit] {.inline.} =
-  Node[K,Unit](k: k, c: c, l: l, r: r)
+  Node[K,Unit](e: false, k: k, c: c, l: l, r: r)
 proc newNode[K;V: NonVoid](c: Color, l: Node[K,V], k: K, v: V,
                            r: Node[K,V]): Node[K,V] {.inline.} =
-  Node[K,V](k: k, v: v, c: c, l: l, r: r)
+  Node[K,V](e: false, k: k, v: v, c: c, l: l, r: r)
 proc newNode[K](c: Color, l: Node[K,void], k: K,
                 r: Node[K,void]): Node[K,void] {.inline.} =
   Node[K,void](k: k, c: c, l: l, r: r)
