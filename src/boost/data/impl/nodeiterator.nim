@@ -6,7 +6,7 @@ type
 when compiles(RBTree):
   type Tree[K,V] = RBTree[K,V]
 else:
-  type Tree = RBTreeM
+  type Tree[K,V] = RBTreeM[K,V]
 
 proc newNodeIterator[K,V](t: Tree[K,V]): NodeIterator[K,V] =
   new result

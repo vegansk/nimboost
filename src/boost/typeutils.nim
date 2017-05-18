@@ -891,7 +891,7 @@ proc genParamConcatenation(resIdent: NimNode, vIdent: NimNode, fields: Fields): 
     let fIdent = ident(f.name)
     let fName = newStrLitNode(f.name)
     let splitter = if i == 0: newStrLitNode("") else: newStrLitNode(", ")
-    result.add quote do:
+    result.add: quote do:
       `resIdent` &= `splitter` & `fName` & ": "
       when compiles($(`vIdent`.`fIdent`)):
         `resIdent` &= $(`vIdent`.`fIdent`)
@@ -916,7 +916,7 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
     for b in t.getBranches:
       let branchBody = genParamConcatenation(resIdent, vIdent, b.getThisBranchFields(t))
       let branchIdent = ident(b.name)
-      body.add quote do:
+      body.add: quote do:
         if `vIdent`.kind == `branchIdent`:
           `branchBody`
   else:
@@ -976,7 +976,7 @@ proc genFieldsComparison(x, y: NimNode, fields: Fields): NimNode {.compileTime.}
   result = newStmtList()
   for f in fields:
     let name = ident(f.name)
-    result.add quote do:
+    result.add: quote do:
       if `x`.`name` != `y`.`name`:
         return false
 
@@ -987,13 +987,13 @@ proc genEqProc(t: Type): NimNode {.compileTime.} =
   var body: NimNode
   if t.isAdt:
     body = newStmtList()
-    body.add quote do:
+    body.add: quote do:
       if `x`.kind != `y`.kind:
         return false
     for b in t.getBranches:
       let kind = ident(b.name)
       let comp = genFieldsComparison(x, y, b.getThisBranchFields(t))
-      body.add quote do:
+      body.add: quote do:
         if `x`.kind == `kind`:
           `comp`
   else:
@@ -1037,7 +1037,7 @@ proc genFromJsonProc(t: Type): NimNode {.compileTime.} =
   let body = newStmtList()
   let res = ident"result"
   if t.header.isRef:
-    body.add quote do:
+    body.add: quote do:
       new `res`
 
   if t.isAdt:
@@ -1047,7 +1047,7 @@ proc genFromJsonProc(t: Type): NimNode {.compileTime.} =
       let br = newStmtList()
       for f in b.getThisBranchFields(t):
         br.add genFromJsonField(j, res, f)
-      body.add quote do:
+      body.add: quote do:
         if `res`.kind == `branchI`:
           `br`
   else:
@@ -1088,7 +1088,7 @@ proc genToJsonProc(t: Type): NimNode {.compileTime.} =
       let br = newStmtList()
       for f in b.getThisBranchFields(t):
         br.add genToJsonField(v, res, f)
-      body.add quote do:
+      body.add: quote do:
         if `v`.kind == `branchI`:
           `br`
   else:
