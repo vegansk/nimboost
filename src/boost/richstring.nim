@@ -64,7 +64,7 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
     var fmtm = ""
     var fmtp = ""
     while idx < fmt.len:
-      if fmt[idx].isAlpha:
+      if fmt[idx].isAlphaAscii:
         if fmt[idx] in formats:
           fmtm = $fmt[idx]
           fmtp = fmt[1..idx-1]
@@ -89,7 +89,7 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
         quit "Unknown format \"" & fmtm & "\""
       nodes.add(newLit(fmt[idx+1..^1]))
 
-macro fmt*(fmt: static[string]): expr =
+macro fmt*(fmt: static[string]): untyped =
   ## String interpolation macro with scala-like format specifiers.
   ## Knows about:
   ## * `d` - decimal number formatter
