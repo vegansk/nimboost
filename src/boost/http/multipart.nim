@@ -111,7 +111,7 @@ proc eopRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
     es.eop = true
     return 0
   var boundary = "\c\L" & es.p.msg.boundary
-  let (pos, length) = findInMem(buf, bytes, addr boundary[0], boundary.len)
+  let (pos, _) = findInMem(buf, bytes, addr boundary[0], boundary.len)
   if pos == -1:
     # End of part was not found
     result = await es.s.readBuffer(buf, bytes)

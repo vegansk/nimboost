@@ -94,7 +94,7 @@ proc strToInt8*(s: string, radix = 10): int8 {.raises: ValueError.} =
 
 proc parseEnum*[T: bool|enum](s: string): T =
   when T is bool:
-    case s.strip.toLower
+    case s.strip.toLowerAscii
     of "true":
       result = true
     of "false":

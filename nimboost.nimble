@@ -1,5 +1,5 @@
 # [Package]
-version       = "0.4.7"
+version       = "0.4.8"
 author        = "Anatoly Galiulin <galiulin.anatoly@gmail.com>"
 description   = "Additions to the Nim's standard library, like boost for C++"
 license       = "MIT"

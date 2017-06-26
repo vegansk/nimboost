@@ -75,7 +75,7 @@ suite "asynchttpserver":
   let url = "http://" & HOST & ":" & $PORT.int
 
   test "GET":
-    check: url.getContent == "Hello, world!"
+    check: newHttpClient().getContent(url) == "Hello, world!"
 
   test "POST":
     check: url.postRequest(body = "Hi!", count = 1) == "Hi!"

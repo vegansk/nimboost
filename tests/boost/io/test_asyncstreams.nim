@@ -3,6 +3,8 @@ import unittest, asyncdispatch, asyncnet, threadpool, os, strutils
 
 const PORT = Port(9999)
 
+{.warning[SmallLshouldNotBeUsed]: off.}
+
 suite "asyncstreams":
 
   when not defined(noNet):

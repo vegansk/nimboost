@@ -3,6 +3,8 @@ import boost.richstring,
        boost.parsers,
        unittest
 
+{.warning[Deprecated]: off.}
+
 suite "richstring":
   test "string interpolation":
     # Simple cases

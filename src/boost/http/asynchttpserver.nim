@@ -164,7 +164,6 @@ proc processClient(client: AsyncSocket, address: string,
   request.headers = newHttpHeaders()
   var lineFut = newFutureVar[string]("asynchttpserver.processClient")
   lineFut.mget() = newStringOfCap(80)
-  var key, value = ""
 
   while not client.isClosed:
     # GET /path HTTP/1.1

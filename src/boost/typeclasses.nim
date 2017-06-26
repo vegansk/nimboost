@@ -2,6 +2,8 @@
 
 import types
 
+{.hint[XDeclaredButNotUsed]: off.}
+
 type
   NonVoid* = concept x
     ## Non-void type

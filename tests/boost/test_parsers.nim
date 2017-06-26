@@ -2,6 +2,8 @@ import unittest, boost.parsers, boost.limits
 
 from logging import nil
 
+{.hint[XDeclaredButNotUsed]: off.}
+
 template checkInt(typ: untyped, fun: untyped): untyped =
   check: fun($typ.min) == typ.min
   check: fun($(typ.min + 13)) == typ.min + 13
