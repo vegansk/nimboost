@@ -27,6 +27,7 @@
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils, ../io/asyncstreams
 import httpcore
+import logging, ../richstring
 
 export httpcore except parseHeader
 
@@ -118,6 +119,28 @@ proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
     msg.add(k & ": " & v & "\c\L")
 
+proc formatHeadersForLog(headers: HttpHeaders, ignored: string): string =
+  result = "{"
+  var first = true
+  for k, v in headers:
+    if cmpIgnoreCase(k, ignored) == 0: continue
+    if first: first = false else: result.add(", ")
+    result.add(fmt"$k: $v")
+  result.add("}")
+
+proc requestLogMsg(req: Request): string =
+  let meth = req.reqMethod.toUpperAscii
+  let headers = formatHeadersForLog(req.headers, "Authorization")
+  fmt"Request: ${req.protocol.orig} $meth ${req.url}, $headers"
+
+proc responseLogMsg(req: Request, code: HttpCode, contentLen: int, headers: HttpHeaders): string =
+  let meth = req.reqMethod.toUpperAscii
+  let headers =
+    if headers.isNil: "{:}"
+    else: formatHeadersForLog(headers, "WWW-Authenticate")
+
+  fmt"Response @ $meth ${req.url}: $code, $contentLen bytes, $headers"
+
 proc sendHeaders*(req: Request, headers: HttpHeaders): Future[void] =
   ## Sends the specified headers to the requesting client.
   var msg = ""
@@ -130,6 +153,8 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## content.
   ##
   ## This procedure will **not** close the client socket.
+  debug(responseLogMsg(req, code, content.len, headers))
+
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
   if headers != nil:
@@ -224,6 +249,8 @@ proc processClient(client: AsyncSocket, address: string,
         await client.sendStatus("400 Bad Request")
         request.client.close()
         return
+
+    debug(requestLogMsg(request))
 
     if request.reqMethod == "post":
       # Check for Expect header
