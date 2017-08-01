@@ -49,7 +49,7 @@ type
     ##   itself.
     ## * ``peekLineImpl`` is the optimized version for ``peekLine`` operation. If it's nil,
     ##   then module tries to emulate ``peekLine`` if it's possible via:
-    ##   * ``getPostion``, ``setPosition`` and ``readLine``
+    ##   * ``getPosition``, ``setPosition`` and ``readLine``
     ##   * ``peekBuffer`` with fixed size buffer.
     ## * if ``flushImpl`` is nil, ``flush`` operation does nothing.
     closeImpl*: proc (s: AsyncStream) {.nimcall, tags:[], gcsafe.}

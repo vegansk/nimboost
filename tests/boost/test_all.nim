@@ -30,6 +30,7 @@ else:
   # HTTP
   import http.test_httpcommon,
          http.test_multipart,
-         http.test_asynchttpserver
+         http.test_asynchttpserver,
+         http.test_asyncchunkedstream
          # Disabled because of https://github.com/nim-lang/Nim/issues/5417
          # http.test_jester

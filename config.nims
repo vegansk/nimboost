@@ -143,6 +143,9 @@ task test_asyncstreams_no_net, "Test asyncstreams without networking":
   --d: noNet
   test "io/test_asyncstreams", Target.C
 
+task test_asyncchunkedstream, "Test AsyncChunkedStream":
+  test "http/test_asyncchunkedstream", Target.C
+
 task test_multipart, "Test multipart":
   test "http/test_multipart", Target.C
 
