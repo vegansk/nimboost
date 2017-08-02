@@ -173,18 +173,34 @@ proc formatHeadersForLog(headers: HttpHeaders, ignored: string): string =
     result.add(fmt"$k: $v")
   result.add("}")
 
-proc requestLogMsg(req: Request): string =
+proc logRequest(req: Request) =
   let meth = req.reqMethod.toUpperAscii
   let headers = formatHeadersForLog(req.headers, "Authorization")
-  fmt"Request: ${req.protocol.orig} $meth ${req.url}, $headers"
+  debug(fmt"Request: ${req.protocol.orig} $meth ${req.url}, $headers")
 
-proc responseLogMsg(req: Request, code: HttpCode, contentLen: int, headers: HttpHeaders): string =
+proc logResponse(req: Request, code: HttpCode, contentLen: int, headers: HttpHeaders) =
   let meth = req.reqMethod.toUpperAscii
   let headers =
     if headers.isNil: "{:}"
     else: formatHeadersForLog(headers, "WWW-Authenticate")
 
-  fmt"Response @ $meth ${req.url}: $code, $contentLen bytes, $headers"
+  debug(fmt"Response @ $meth ${req.url}: $code, $contentLen bytes, $headers")
+
+proc logMalformedHttpException(e: ref MalformedHttpException) =
+  # These are less likely to signal a serious error ou our side, so we log them
+  # as `debug`
+  debug(
+    "Failed to read request body: ",
+    e.name, ": ", e.msg, "\L",
+    e.getStackTrace
+  )
+
+proc logHandlerException(e: ref Exception) =
+  warn(
+    "Uncaught exception in HTTP handler: ",
+    e.name, ": ", e.msg, "\L",
+    e.getStackTrace
+  )
 
 proc sendHeaders*(req: Request, headers: HttpHeaders): Future[void] =
   ## Sends the specified headers to the requesting client.
@@ -198,7 +214,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## content.
   ##
   ## This procedure will **not** close the client socket.
-  debug(responseLogMsg(req, code, content.len, headers))
+  logResponse(req, code, content.len, headers)
 
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
@@ -293,8 +309,7 @@ proc processOneRequest(
     lineFut.clean()
     await client.recvLineInto(lineFut)
 
-    if lineFut.mget == "":
-      client.close(); return false
+    if lineFut.mget == "": return false
     if lineFut.mget == "\c\L": break
     let (key, value) = parseHeader(lineFut.mget)
     request.headers[key] = value
@@ -302,7 +317,7 @@ proc processOneRequest(
     if request.headers.len > headerLimit:
       await fail("Too many headers in request")
 
-  debug(requestLogMsg(request))
+  logRequest(request)
 
   if request.reqMethod == "post":
     # Check for Expect header
@@ -389,26 +404,16 @@ proc processClient(
   while true:
     let keepAliveFut = processOneRequest(client, address, callback)
     yield keepAliveFut
+
+    var keepAlive = false
     try:
-      let keepAlive = keepAliveFut.read
-      if not keepAlive: break
+      keepAlive = keepAliveFut.read
     except MalformedHttpException:
-      # These are less likely to signal a serious error, so we log them as `debug`
-      let e = getCurrentException()
-      debug(
-        "Failed to read request body: ",
-        e.name, ": ", e.msg, "\L",
-        e.getStackTrace
-      )
-      break
+      logMalformedHttpException((ref MalformedHttpException)getCurrentException())
     except:
-      let e = getCurrentException()
-      warn(
-        "Uncaught exception in HTTP handler for ", address, ": ",
-        e.name, ": ", e.msg, "\L",
-        e.getStackTrace
-      )
-      break
+      logHandlerException(getCurrentException())
+
+    if not keepAlive: break
 
   client.close
 
