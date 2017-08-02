@@ -103,6 +103,9 @@ type
     charset*: string
     boundary*: string
 
+  MalformedHttpException* = object of Exception
+    ## Raised in case of malformed HTTP request
+
 proc parseContentType*(value: string): ContentType =
   ## Parses the ``value`` of `Content-Type` header
   let (mt, rest) = value.parseCHeader

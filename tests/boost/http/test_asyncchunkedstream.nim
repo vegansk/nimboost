@@ -1,5 +1,6 @@
 import asyncdispatch, unittest, strutils, random, sequtils, future
 import boost.io.asyncstreams, boost.http.asyncchunkedstream
+import boost.http.httpcommon
 
 const allChars: seq[char] = toSeq('\0'..'\255')
 const allCharsExceptNewline = allChars.filter(t => t notIn {'\c', '\L'})
@@ -98,7 +99,7 @@ suite "AsyncChunkedStream":
     let input = newAsyncStringStream("this\c\Lis not valid")
     let wrapped = newAsyncChunkedStream(input)
 
-    expect(MalformedChunkedStreamError) do:
+    expect(MalformedHttpException) do:
       discard waitFor(wrapped.readData(10))
 
     check: wrapped.atEnd
@@ -161,5 +162,5 @@ suite "AsyncChunkedStream":
       let wrapped = newAsyncChunkedStream(input)
       defer: wrapped.close()
 
-      expect(MalformedChunkedStreamError) do:
+      expect(MalformedHttpException) do:
         discard waitFor(wrapped.readAll)

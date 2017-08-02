@@ -4,6 +4,7 @@ import unittest,
        threadpool,
        httpclient,
        net,
+       os,
        strutils,
        boost.io.asyncstreams
 
@@ -33,6 +34,7 @@ proc serverThread =
       elif req.url.path == "/discardbody":
         # Doesn't read the body!
         await req.respond(Http200, "discarded")
+
       else:
         let body = await req.body
         await req.respond(Http200, body)
@@ -88,3 +90,78 @@ suite "asynchttpserver":
     let body = "foo\c\L\c\Lbar\c\Lbaz"
     check: client.postContent(url & "/discardbody", body = body) == "discarded"
     check: client.getContent(url) == "Hello, world!"
+
+  test "Should support requests with chunked encoding":
+    # Client can't send chunked requests, so we drop down to sockets
+    let reqLine = "POST " & url & "/ HTTP/1.1\c\L"
+    let headers = "Transfer-Encoding: chunked\c\L"
+    let body = "3\c\Lfoo\c\L3\c\Lbar\c\L0\c\L\c\L"
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+    # Skip the headers and get to the body
+    while s.recvLine(100) != "\c\L":
+      discard
+
+    let respBody = s.recv(6)
+    check: respBody == "foobar"
+
+  test "Should fail for request with invalid transfer encoding":
+    let reqLine = "POST " & url & "/ HTTP/1.1\c\L"
+    let headers = "Transfer-Encoding: invalid\c\L"
+    let body = "invalid"
+
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+
+    # Don't read more than we need to - we'll lock if we get past the message
+    let resp = s.recv(12, 1000)
+    check: resp == "HTTP/1.1 400"
+
+  test "Should fail for request with invalid content length":
+    let reqLine = "POST " & url & "/ HTTP/1.1\c\L"
+    let headers = "Content-Length: invalid\c\L"
+    let body = "invalid"
+
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+
+    # Don't read more than we need to - we'll lock if we get past the message
+    let resp = s.recv(12, 1000)
+    check: resp == "HTTP/1.1 400"
+
+  test "Malformed chunked messages in discarded body should not crash the server":
+    # Client can't send chunked requests, so we drop down to sockets
+    let reqLine = "POST " & url & "/discardbody HTTP/1.1\c\L"
+    let headers = "Transfer-Encoding: chunked\c\L"
+    let body = "invalid\c\Lmessage"
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+
+    # Is there a better way?
+    sleep(100)
+
+    # Check that the server is working
+    check: newHttpClient().getContent(url) == "Hello, world!"
+
+  test "Malformed chunked messages in callback should not crash the server":
+    # Client can't send chunked requests, so we drop down to sockets
+    let reqLine = "POST " & url & "/ HTTP/1.1\c\L"
+    let headers = "Transfer-Encoding: chunked\c\L"
+    let body = "invalid\c\Lmessage"
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+
+    sleep(100)
+
+    # Check that the server is working
+    check: newHttpClient().getContent(url) == "Hello, world!"

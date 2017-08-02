@@ -1,9 +1,8 @@
 import strutils, asyncdispatch
 import ../io/asyncstreams
+import ./httpcommon
 
 type
-  MalformedChunkedStreamError* = object of IOError
-
   # Possible states of the stream:
   # 1. Beginning of a chunk (bytesLeft = 0).
   #    Underlying stream will next read the first byte of the next chunk size.
@@ -39,7 +38,7 @@ proc cAtEnd(s: AsyncStream): bool =
 
 proc raiseError(s: AsyncChunkedStream, msg: string) {.noReturn.} =
   s.state = sFailed
-  raise newException(MalformedChunkedStreamError, msg)
+  raise newException(MalformedHttpException, msg)
 
 proc readExactly(s: AsyncChunkedStream, size: Natural): Future[string] {.async.} =
   var res = newString(size)
@@ -151,7 +150,7 @@ proc newAsyncChunkedStream*(src: AsyncStream): AsyncChunkedStream =
   ## message body. Closing the underlying stream is handled by caller to allow
   ## continuing HTTP connection.
   ##
-  ## Decoded stream can throw a `MalformedChunkedStreamError` exception when
+  ## Decoded stream can throw a `MalformedHttpException` when
   ## reading or closing to signal unexpected data in the underlying stream.
   ##
   ## *Warning*: Discarding or closing the chunked stream before it reaches the
