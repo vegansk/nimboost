@@ -62,6 +62,7 @@ suite "asyncstreams":
       let l2 = await s.readLine
       check: l1 == l2
 
+      s.close
       fname.removeFile
     waitFor doTest()
 

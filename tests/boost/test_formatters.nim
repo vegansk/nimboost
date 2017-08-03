@@ -32,7 +32,10 @@ suite "formatters":
     check: floatToStr(10, prec = 3) == "10.000"
     check: floatToStr(-20, prec = 3, fill = '0', len = 8) == "-020.000"
     check: floatToStr(-20, prec = 3, fill = '0', len = -8) == "-20.0000"
+    let fs = floatToStr(-20, scientific = true, prec = 3)
     when defined(js):
-      check: floatToStr(-20, scientific = true, prec = 3) == "-2.000e+1"
+      check: fs == "-2.000e+1"
     else:
-      check: floatToStr(-20, scientific = true, prec = 3) == "-2.000e+01"
+      # On Windows we get three digits in the exponent by default:
+      # https://msdn.microsoft.com/en-us/library/0fatw238.aspx
+      check: fs in ["-2.000e+01", "-2.000e+001"]
