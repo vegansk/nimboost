@@ -1,5 +1,5 @@
 # [Package]
-version       = "0.4.8"
+version       = "0.5.0"
 author        = "Anatoly Galiulin <galiulin.anatoly@gmail.com>"
 description   = "Additions to the Nim's standard library, like boost for C++"
 license       = "MIT"
@@ -7,4 +7,4 @@ license       = "MIT"
 srcDir = "src"
 
 # [Deps]
-requires "nim >= 0.16.0", "patty >= 0.2.1"
+requires "nim >= 0.17.0", "patty >= 0.2.1"
