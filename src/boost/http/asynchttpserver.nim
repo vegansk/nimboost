@@ -75,11 +75,28 @@ proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
   result.reuseAddr = reuseAddr
   result.reusePort = reusePort
 
-proc len*(body: RequestBody): Option[int64] =
-  ## Returns the length of the body if available, otherwise `-1`
+proc hasLen*(body: RequestBody): bool =
+  ## Returns true if the body length is known (when using `Content-Length`,
+  ## or when the body was previously cached).
+  ##
+  ## See `len`.
   case body.kind
-  of rbkCached: body.data.len.int64.some
-  of rbkStreamed: body.contentLength
+  of rbkCached: return true
+  of rbkStreamed: return body.contentLength.isSome
+
+proc len*(body: RequestBody): int64 =
+  ## Returns the length of the body if available.
+  ##
+  ## If body length is unknown (e.g. `Transfer-Encoding: chunked`) raises a
+  ## `ValueError`. To avoid this check `hasLen` beforehand.
+  case body.kind
+  of rbkCached:
+    return body.data.len.int64
+  of rbkStreamed:
+    if body.contentLength.isSome:
+      return body.contentLength.get
+    else:
+      raise newException(ValueError, "Body length is unknown")
 
 type
   # A stream wrapper that reads at most `length` bytes from the underlying stream
