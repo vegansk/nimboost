@@ -26,6 +26,10 @@ suite "formatters":
   test "alignStr":
     check: alignStr("abc", 5, '.') == "..abc"
     check: alignStr("abc", -5, '.') == "abc.."
+    check: alignStr("abcd", 2, trunc = true) == "ab"
+    check: alignStr("abcd", 2, trunc = false) == "abcd"
+    check: alignStr("abcd", 5, trunc = false) == " abcd"
+    check: alignStr("abcd", 5, trunc = true) == " abcd"
 
   test "floatToStr":
     check: floatToStr(1.0) == "1"

@@ -56,6 +56,14 @@ proc intToStr*(n: SomeNumber, radix = 10, len = 0, fill = ' ', lowerCase = false
       prefix[0] = '-'
     result = prefix & result
 
+proc `*`(s: string, n: Positive): string =
+  let length = s.len * n
+  result = newString(length)
+  var pos =0
+  while pos < length:
+    result[pos..(pos + s.len - 1)] = s
+    pos += s.len
+
 proc alignStr*(s: string, len: int, fill = ' ', trunc = false): string =
   ## Aligns ``s`` using ``fill`` char to the right if ``len`` is
   ## positive, or to the left, if ``len`` is negative.
@@ -64,21 +72,16 @@ proc alignStr*(s: string, len: int, fill = ' ', trunc = false): string =
   if len == 0:
     result = s
   elif trunc and s.len > abs(len):
+    result = s
     result.setLen(abs(len))
   else:
-    let length = abs(len)
-    result = newString(length)
-    var idx = 0
-    if len > 0:
-      while idx < length - s.len:
-        result[idx] = fill
-        inc idx
-    result[idx..(idx + s.len - 1)] = s
-    if len < 0:
-      idx += s.len
-      while idx < length:
-        result[idx] = fill
-        inc idx
+    let fillLength = abs(len) - s.len
+    if fillLength <= 0:
+      result = s
+    elif len > 0:
+      result = $fill * fillLength & s
+    else:
+      result = s & $fill * fillLength
 
 proc floatToStr*(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false): string =
   ## Converts ``v`` to string with precision == ``prec``. If result's length
