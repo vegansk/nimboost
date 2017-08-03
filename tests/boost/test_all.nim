@@ -25,11 +25,18 @@ else:
          data.test_rbtree,
          data.test_props,
          data.test_memory
-  # I/O
-  import io.test_asyncstreams
-  # HTTP
+
+  # HTTP - pure parts
+  # asyncstreams test slows down execution for some reason (dispatcher?). So we
+  # run "heavy" tests before that.
   import http.test_httpcommon,
          http.test_multipart,
-         http.test_asynchttpserver
+         http.test_asyncchunkedstream
+
+  # I/O
+  import io.test_asyncstreams
+
+  # HTTP server
+  import http.test_asynchttpserver
          # Disabled because of https://github.com/nim-lang/Nim/issues/5417
          # http.test_jester

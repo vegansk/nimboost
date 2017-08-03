@@ -4,6 +4,7 @@ import unittest,
        threadpool,
        httpclient,
        net,
+       os,
        strutils,
        boost.io.asyncstreams
 
@@ -22,6 +23,7 @@ proc processBigData(req: Request) {.async.} =
   await req.respond(Http200, $length)
 
 proc serverThread =
+  let finished = newFuture[void]("serverThread.completed")
   var server = newAsyncHttpServer()
   proc cb(req: Request) {.async.} =
     case req.reqMethod
@@ -33,6 +35,9 @@ proc serverThread =
       elif req.url.path == "/discardbody":
         # Doesn't read the body!
         await req.respond(Http200, "discarded")
+      elif req.url.path == "/quit":
+        await req.respond(Http200, "")
+        finished.complete
       else:
         let body = await req.body
         await req.respond(Http200, body)
@@ -40,7 +45,7 @@ proc serverThread =
       await req.respond(Http404, "Not found")
 
   asyncCheck server.serve(PORT, cb)
-  runForever()
+  waitFor(finished)
 
 proc postRequest(path = "/", body = "*", count = 10_000_000): string =
   var s = newSocket()
@@ -70,9 +75,10 @@ proc postRequest(path = "/", body = "*", count = 10_000_000): string =
 
 suite "asynchttpserver":
 
-  spawn serverThread()
-
   let url = "http://" & HOST & ":" & $PORT.int
+
+  spawn serverThread()
+  defer: discard newHttpClient().postContent(url & "/quit", "")
 
   test "GET":
     check: newHttpClient().getContent(url) == "Hello, world!"
@@ -88,3 +94,78 @@ suite "asynchttpserver":
     let body = "foo\c\L\c\Lbar\c\Lbaz"
     check: client.postContent(url & "/discardbody", body = body) == "discarded"
     check: client.getContent(url) == "Hello, world!"
+
+  test "Should support requests with chunked encoding":
+    # Client can't send chunked requests, so we drop down to sockets
+    let reqLine = "POST " & url & "/ HTTP/1.1\c\L"
+    let headers = "Transfer-Encoding: chunked\c\L"
+    let body = "3\c\Lfoo\c\L3\c\Lbar\c\L0\c\L\c\L"
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+    # Skip the headers and get to the body
+    while s.recvLine(100) != "\c\L":
+      discard
+
+    let respBody = s.recv(6)
+    check: respBody == "foobar"
+
+  test "Should fail for request with invalid transfer encoding":
+    let reqLine = "POST " & url & "/ HTTP/1.1\c\L"
+    let headers = "Transfer-Encoding: invalid\c\L"
+    let body = "invalid"
+
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+
+    # Don't read more than we need to - we'll lock if we get past the message
+    let resp = s.recv(12, 1000)
+    check: resp == "HTTP/1.1 400"
+
+  test "Should fail for request with invalid content length":
+    let reqLine = "POST " & url & "/ HTTP/1.1\c\L"
+    let headers = "Content-Length: invalid\c\L"
+    let body = "invalid"
+
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+
+    # Don't read more than we need to - we'll lock if we get past the message
+    let resp = s.recv(12, 1000)
+    check: resp == "HTTP/1.1 400"
+
+  test "Malformed chunked messages in discarded body should not crash the server":
+    # Client can't send chunked requests, so we drop down to sockets
+    let reqLine = "POST " & url & "/discardbody HTTP/1.1\c\L"
+    let headers = "Transfer-Encoding: chunked\c\L"
+    let body = "invalid\c\Lmessage"
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+
+    # Is there a better way?
+    sleep(100)
+
+    # Check that the server is working
+    check: newHttpClient().getContent(url) == "Hello, world!"
+
+  test "Malformed chunked messages in callback should not crash the server":
+    # Client can't send chunked requests, so we drop down to sockets
+    let reqLine = "POST " & url & "/ HTTP/1.1\c\L"
+    let headers = "Transfer-Encoding: chunked\c\L"
+    let body = "invalid\c\Lmessage"
+    let request = reqLine & headers & "\c\L" & body
+    var s = newSocket()
+    s.connect(HOST, PORT)
+    s.send(request)
+
+    sleep(100)
+
+    # Check that the server is working
+    check: newHttpClient().getContent(url) == "Hello, world!"
