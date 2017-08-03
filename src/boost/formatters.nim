@@ -64,21 +64,16 @@ proc alignStr*(s: string, len: int, fill = ' ', trunc = false): string =
   if len == 0:
     result = s
   elif trunc and s.len > abs(len):
+    result = s
     result.setLen(abs(len))
   else:
-    let length = abs(len)
-    result = newString(length)
-    var idx = 0
-    if len > 0:
-      while idx < length - s.len:
-        result[idx] = fill
-        inc idx
-    result[idx..(idx + s.len - 1)] = s
-    if len < 0:
-      idx += s.len
-      while idx < length:
-        result[idx] = fill
-        inc idx
+    let fillLength = abs(len) - s.len
+    if fillLength <= 0:
+      result = s
+    elif len > 0:
+      result = repeat(fill, fillLength) & s
+    else:
+      result = s & repeat(fill, fillLength)
 
 proc floatToStr*(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false): string =
   ## Converts ``v`` to string with precision == ``prec``. If result's length
