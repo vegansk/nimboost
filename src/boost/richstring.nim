@@ -52,7 +52,7 @@ proc handleSFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   if maxLen == 0:
     result = parseExpr("$(" & exp & ")")
   else:
-    result = newCall(bindSym"alignStr", parseExpr("$(" & exp & ")"), newLit(maxLen), newLit(' '), newLit(true))
+    result = newCall(bindSym"alignStr", parseExpr("$(" & exp & ")"), newLit(maxLen), newLit(' '))
 
 proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTime} =
   if fmt[1] == '%':
