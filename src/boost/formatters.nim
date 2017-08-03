@@ -61,22 +61,27 @@ proc alignStr*(s: string, len: int, fill = ' ', trunc = false): string =
   ## positive, or to the left, if ``len`` is negative.
   ## If the length of ``s`` is bigger then `abs(len)` and ``trunc`` == true,
   ## truncates ``s``
-  if len == 0:
+  let absLen = abs(len)
+  if len == 0 or s.len == absLen:
     result = s
-  elif trunc and s.len > abs(len):
-    result.setLen(abs(len))
+  elif s.len > absLen:
+    if not trunc:
+      result = s
+    elif len > 0:
+      result = s[0 ..< absLen]
+    else:
+      result = s[(s.len-absLen) ..< s.len]
   else:
-    let length = abs(len)
-    result = newString(length)
+    result = newString(absLen)
     var idx = 0
     if len > 0:
-      while idx < length - s.len:
+      while idx < absLen - s.len:
         result[idx] = fill
         inc idx
     result[idx..(idx + s.len - 1)] = s
     if len < 0:
       idx += s.len
-      while idx < length:
+      while idx < absLen:
         result[idx] = fill
         inc idx
 
