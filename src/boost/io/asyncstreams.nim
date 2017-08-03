@@ -462,7 +462,7 @@ proc initAsyncFileStreamImpl(res: var AsyncFileStreamObj, f: AsyncFile) =
   res.f = f
   res.closed = false
 
-  res.closeImpl = fileClose
+  res.closeImpl = cast[type(res.closeImpl)](fileClose)
   res.atEndImpl = fileAtEnd
   res.setPositionImpl = fileSetPosition
   res.getPositionImpl = fileGetPosition
@@ -577,7 +577,7 @@ proc initAsyncSocketStreamImpl(res: var AsyncSocketStreamObj, s: AsyncSocket) =
   res.s = s
   res.closed = false
 
-  res.closeImpl = sockClose
+  res.closeImpl = cast[type(res.closeImpl)](sockClose)
   res.atEndImpl = sockAtEnd
   res.readImpl = cast[type(res.readImpl)](sockRead)
   res.writeImpl = cast[type(res.writeImpl)](sockWrite)

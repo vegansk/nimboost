@@ -5,7 +5,7 @@ import ospaths, strutils, sequtils
 type Target {.pure.} = enum JS, C
 
 template dep(task: untyped): stmt =
-  exec "nim " & astToStr(task)
+  selfExec astToStr(task)
 
 template deps(a, b: untyped): stmt =
   dep(a)
