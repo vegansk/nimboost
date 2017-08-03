@@ -23,6 +23,7 @@ proc processBigData(req: Request) {.async.} =
   await req.respond(Http200, $length)
 
 proc serverThread =
+  let finished = newFuture[void]("serverThread.completed")
   var server = newAsyncHttpServer()
   proc cb(req: Request) {.async.} =
     case req.reqMethod
@@ -34,7 +35,9 @@ proc serverThread =
       elif req.url.path == "/discardbody":
         # Doesn't read the body!
         await req.respond(Http200, "discarded")
-
+      elif req.url.path == "/quit":
+        await req.respond(Http200, "")
+        finished.complete
       else:
         let body = await req.body
         await req.respond(Http200, body)
@@ -42,7 +45,7 @@ proc serverThread =
       await req.respond(Http404, "Not found")
 
   asyncCheck server.serve(PORT, cb)
-  runForever()
+  waitFor(finished)
 
 proc postRequest(path = "/", body = "*", count = 10_000_000): string =
   var s = newSocket()
@@ -72,9 +75,10 @@ proc postRequest(path = "/", body = "*", count = 10_000_000): string =
 
 suite "asynchttpserver":
 
-  spawn serverThread()
-
   let url = "http://" & HOST & ":" & $PORT.int
+
+  spawn serverThread()
+  defer: discard newHttpClient().postContent(url & "/quit", "")
 
   test "GET":
     check: newHttpClient().getContent(url) == "Hello, world!"
