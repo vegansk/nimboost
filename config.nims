@@ -51,6 +51,7 @@ proc test(name: string, target: Target) =
     mkDir "bin"
   --run
   --define:insideTheTest
+  --define:testing
   let fName = name.splitPath[1]
   buildBase true, joinPath("bin", fName), joinPath("tests/boost", name), target
 
@@ -127,7 +128,10 @@ task docs, "Build documentation":
 task test_asynchttpserver, "Test asynchttpserver":
   test "http/test_asynchttpserver", Target.C
 
-task test_jester, "Test asynchttpserver":
+task test_asynchttpserver_internals, "Test asynchttpserver (internals)":
+  test "http/test_asynchttpserver_internals", Target.C
+
+task test_jester, "Test jester":
   test "http/test_jester", Target.C
 
 task test_httpcommon, "Test http common utils":

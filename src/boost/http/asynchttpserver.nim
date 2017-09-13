@@ -110,7 +110,7 @@ proc rbClose(s: AsyncStream) =
   s.RequestBodyStream.s.close
 
 proc rbAtEnd(s: AsyncStream): bool =
-  s.RequestBodyStream.pos + 1 >= s.RequestBodyStream.length
+  s.RequestBodyStream.pos >= s.RequestBodyStream.length
 proc rbGetPosition(s: AsyncStream): int64 = s.RequestBodyStream.pos
 proc rbReadData(s: AsyncStream, buff: pointer, buffLen: int): Future[int] {.async.} =
   var ss = s.RequestBodyStream

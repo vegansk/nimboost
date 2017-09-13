@@ -31,7 +31,8 @@ else:
   # run "heavy" tests before that.
   import http.test_httpcommon,
          http.test_multipart,
-         http.test_asyncchunkedstream
+         http.test_asyncchunkedstream,
+         http.test_asynchttpserver_internals
 
   # I/O
   import io.test_asyncstreams
