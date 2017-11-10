@@ -390,7 +390,7 @@ proc genConstructorImpl(`type`: NimNode, n: Option[string], exported: bool): Nim
   let recList = obj[2]
   expectKind recList, nnkRecList
 
-  let name = if n.isSome: n.get else: if isRef: "new" & $`type` else: "init" & $`type`
+  let name = if n.isSome: n.get else: (if isRef: "new" & $`type` else: "init" & $`type`)
   let nameI = if exported: postfix(ident(name), "*") else: ident(name)
 
   var params = newSeq[NimNode]()
