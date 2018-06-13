@@ -41,6 +41,9 @@ suite "asyncstreams":
         await c.writeLine("World!")
         let line = await c.readLine
         check: line == "Hello, World!"
+
+      #TODO: Wait for server to start
+      sleep(500)
       waitFor doTest()
 
   test "AsyncFileStream":
