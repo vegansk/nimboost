@@ -77,11 +77,23 @@ proc alignStr*(s: string, len: int, fill = ' ', trunc = false): string =
 
 proc floatToStr*(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false): string =
   ## Converts ``v`` to string with precision == ``prec``. If result's length
-  ## is lesser then ``len``, it aligns result to the right with ``fill`` char.
+  ## is less then ``len``, it aligns result to the right with ``fill`` char.
   ## If ``len`` is negative, the result is aligned to the left.
+  ##
+  ## Precision and formatting are handled the following way (in terms of `strutils`):
+  ## 1. If `scientific` is `true`, use `ffScientific` with precision `prec`.
+  ## 2. If `scientific` is `false` and `prec` is zero, use `ffDefault` with
+  ##    precision `-1` (e.g. `1.0` is formatted as `"1"`).
+  ## 3. If `scientific` is `false` and `prec` is not zero, use `ffDecimal` with
+  ##    precision `prec`.
   let f = if scientific: ffScientific else: (if prec == 0: ffDefault else: ffDecimal)
+
+  # `formatBiggestFloat` changed its precision handling in 0.18.0, we have to
+  # preserve our behavior.
+  let prec0 = if f == ffDefault: -1 else: prec
+
   if len > 0 and v < 0 and fill == '0':
-    result = "-" & alignStr(formatBiggestFloat(-v.BiggestFloat, f, prec, sep), len-1, fill)
+    result = "-" & alignStr(formatBiggestFloat(-v.BiggestFloat, f, prec0, sep), len-1, fill)
   else:
-    result = alignStr(formatBiggestFloat(v.BiggestFloat, f, prec, sep), len, fill)
+    result = alignStr(formatBiggestFloat(v.BiggestFloat, f, prec0, sep), len, fill)
 
