@@ -42,7 +42,7 @@ suite "richstring":
     check: fmt"${-1}%-08.3f" == "-1.00000"
     check: fmt"${-1}%-8.3f" == "-1.000  "
     when defined(js):
-      check: fmt"${1}%e" == "1e+0"
+      check: fmt"${1}%e" == "1.000000e+0"
     elif defined(windows):
       check: fmt"${1}%e" == "1.000000e+000"
     else:
