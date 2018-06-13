@@ -795,6 +795,7 @@ proc genDataType(t: Type): NimNode {.compileTime.} =
   result.add(`type`)
 
 proc fillProcGenericParams(p: NimNode, t: Type) =
+  expectKind p, nnkProcDef
   if t.header.genericParams.isSome:
     p[2] = genGenericParams(t.header.genericParams.get)
 
@@ -873,7 +874,7 @@ proc genDataGetter(t: Type, fields: Fields, fieldIdx: int): NimNode {.compileTim
     proc `procIdent`(v: `typeIdent`): `fieldType` {.used.} =
       v.`fieldIdent`
 
-  fillProcGenericParams(result[0], t)
+  fillProcGenericParams(result, t)
 
 proc genDataGetters(t: Type): NimNode {.compileTime.} =
   let fields = if t.isAdt: t.getAllBranchesFields else: t.getTypeHierarchy.fields
@@ -929,7 +930,7 @@ proc genShowProc(t: Type): NimNode {.compileTime.} =
       `resIdent` &= ")"
       return `resIdent`
 
-  fillProcGenericParams(result[0], t)
+  fillProcGenericParams(result, t)
 
 proc genCopyMacro(t: Type, branch: Option[Field] = Field.none): NimNode {.compileTime.} =
   let consName = newStrLitNode(t.getConstructorName(branch))
@@ -1006,7 +1007,7 @@ proc genEqProc(t: Type): NimNode {.compileTime.} =
     proc `nameI`(`x`, `y`: `typeIdent`): bool {.used.} =
       `res` = true
       `body`
-  fillProcGenericParams(result[0], t)
+  fillProcGenericParams(result, t)
 
 proc genFromJsonField(j, res: NimNode, f: Field): NimNode =
   let nameS = newStrLitNode(f.name)
@@ -1057,7 +1058,7 @@ proc genFromJsonProc(t: Type): NimNode {.compileTime.} =
   result = quote do:
     proc `procName`(t: typedesc[`typeIdent`], `j`: JsonNode): `typeIdent` {.used.} =
       `body`
-  fillProcGenericParams(result[0], t)
+  fillProcGenericParams(result, t)
 
 proc genToJsonField(v, res: NimNode, f: Field): NimNode =
   let nameS = newStrLitNode(f.name)
@@ -1098,7 +1099,7 @@ proc genToJsonProc(t: Type): NimNode {.compileTime.} =
     proc `procName`(`v`: `typeIdent`): JsonNode {.used.} =
       `res` = newJObject()
       `body`
-  fillProcGenericParams(result[0], t)
+  fillProcGenericParams(result, t)
 
 proc genJsonProcs(t: Type): NimNode {.compileTime.} =
   result = newStmtList()

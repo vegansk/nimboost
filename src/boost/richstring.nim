@@ -105,7 +105,7 @@ macro fmt*(fmt: static[string]): untyped =
   ##   import boost.richstring
   ##
   ##   let s = "string"
-  ##   assert fmt"${s[0..2].toUpper}" == "STR"
+  ##   assert fmt"${s[0..2].toUpperAscii}" == "STR"
   ##   assert fmt"${-10}%04d" == "-010"
   ##   assert fmt"0x${10}%02X" == "0x0A"
   ##   assert fmt"""${"test"}%-5s""" == "test "

@@ -14,7 +14,7 @@ suite "richstring":
     check: fmt"v = $$v" == "v = $v"
     let s = "string"
     check: not compiles(fmt(s))
-    check: fmt"${s[0..2].toUpper}" == "STR"
+    check: fmt"${s[0..2].toUpperAscii}" == "STR"
 
     # Int formatters
     check: fmt"$v%" == "1%"
