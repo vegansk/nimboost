@@ -44,7 +44,8 @@ suite "richstring":
     when defined(js):
       check: fmt"${1}%e" == "1.000000e+0"
     elif defined(windows):
-      check: fmt"${1}%e" == "1.000000e+000"
+      # This differs between versions!
+      check: fmt"${1}%e" in ["1.000000e+00", "1.000000e+000"]
     else:
       check: fmt"${1}%e" == "1.000000e+00"
 
