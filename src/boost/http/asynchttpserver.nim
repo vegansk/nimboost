@@ -292,6 +292,12 @@ proc processOneRequest(
   while true:
     lineFut.mget().setLen(0)
     lineFut.clean()
+
+    # It's possible to kill the server, and if we're not in the middle of
+    # something (or even if we are?), that shouldn't be an error.
+    # TODO: there should be a better place for this.
+    if client.isClosed: return false
+
     await client.recvLineInto(lineFut) # TODO: Timeouts.
 
     if lineFut.mget == "":
