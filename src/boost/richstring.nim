@@ -1,6 +1,6 @@
 ## Module provides string utilities
 
-import parseutils, sequtils, macros, strutils, ./formatters, ./parsers
+import parseutils, sequtils, macros, options, strutils, ./formatters, ./parsers
 
 proc parseIntFmt(fmtp: string): tuple[maxLen: int, fillChar: char] =
   var maxLen = if fmtp == "": 0 else: strToInt(fmtp)
@@ -8,8 +8,9 @@ proc parseIntFmt(fmtp: string): tuple[maxLen: int, fillChar: char] =
   var fillChar = if ((minus and fmtp.len > 1) or fmtp.len > 0) and fmtp[if minus: 1 else: 0] == '0': '0' else: ' '
   (maxLen, fillChar)
 
-proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char] =
+proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: Option[int], fillChar: char] =
   result.fillChar = ' '
+
   if fmtp == "":
     return
   var t = ""
@@ -27,7 +28,9 @@ proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char] 
   idx += fmtp.skipWhile({'.'}, idx)
   idx += fmtp.parseWhile(t, {'0'..'9'}, idx)
   if t != "":
-    result.prec = strToInt(t)
+    result.prec = some(strToInt(t))
+  else:
+    result.prec = none(int)
 
 proc handleIntFormat(exp: string, fmtp: string, radix: int, lowerCase = false): NimNode {.compileTime.} =
   let (maxLen, fillChar) = parseIntFmt(fmtp)
@@ -40,11 +43,14 @@ proc handleXFormat(exp: string, fmtp: string, lowerCase: bool): NimNode {.compil
   result = handleIntFormat(exp, fmtp, 16, lowerCase)
 
 proc handleFFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
-  var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
+  let (maxLen, prec0, fillChar) = parseFloatFmt(fmtp)
+  let prec = prec0.get(0)
   result = newCall(bindSym"floatToStr", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(false))
 
 proc handleEFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
-  var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
+  var (maxLen, prec0, fillChar) = parseFloatFmt(fmtp)
+  # We use 6 digits by default, and `floatToStr` uses the minimum amount
+  let prec = prec0.get(6)
   result = newCall(bindSym"floatToStr", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(true))
 
 proc handleSFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
@@ -105,7 +111,7 @@ macro fmt*(fmt: static[string]): untyped =
   ##   import boost.richstring
   ##
   ##   let s = "string"
-  ##   assert fmt"${s[0..2].toUpper}" == "STR"
+  ##   assert fmt"${s[0..2].toUpperAscii}" == "STR"
   ##   assert fmt"${-10}%04d" == "-010"
   ##   assert fmt"0x${10}%02X" == "0x0A"
   ##   assert fmt"""${"test"}%-5s""" == "test "

@@ -14,7 +14,7 @@ suite "richstring":
     check: fmt"v = $$v" == "v = $v"
     let s = "string"
     check: not compiles(fmt(s))
-    check: fmt"${s[0..2].toUpper}" == "STR"
+    check: fmt"${s[0..2].toUpperAscii}" == "STR"
 
     # Int formatters
     check: fmt"$v%" == "1%"
@@ -42,9 +42,10 @@ suite "richstring":
     check: fmt"${-1}%-08.3f" == "-1.00000"
     check: fmt"${-1}%-8.3f" == "-1.000  "
     when defined(js):
-      check: fmt"${1}%e" == "1e+0"
+      check: fmt"${1}%e" == "1.000000e+0"
     elif defined(windows):
-      check: fmt"${1}%e" == "1.000000e+000"
+      # This differs between versions!
+      check: fmt"${1}%e" in ["1.000000e+00", "1.000000e+000"]
     else:
       check: fmt"${1}%e" == "1.000000e+00"
 

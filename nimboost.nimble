@@ -7,4 +7,4 @@ license       = "MIT"
 srcDir = "src"
 
 # [Deps]
-requires "nim >= 0.17.2", "patty >= 0.3.1"
+requires "nim >= 0.18.0", "patty >= 0.3.1"

@@ -38,6 +38,5 @@ else:
   import io.test_asyncstreams
 
   # HTTP server
-  import http.test_asynchttpserver
-         # Disabled because of https://github.com/nim-lang/Nim/issues/5417
-         # http.test_jester
+  import http.test_asynchttpserver,
+         http.test_jester

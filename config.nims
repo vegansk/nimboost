@@ -35,8 +35,8 @@ proc buildBase(debug: bool, bin: string, src: string, target: Target) =
     --linetrace: on
     --verbosity: 1
 
-    --NimblePath: src
-    --NimblePath: srcdir
+    --path: src
+    --path: srcdir
     
   case target
   of Target.C:

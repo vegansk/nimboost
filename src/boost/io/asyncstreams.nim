@@ -516,10 +516,11 @@ proc strRead(s: AsyncStream, buf: pointer, size: int): Future[int] {.async.} =
   let str = AsyncStringStream(s)
   doAssert(not str.closed, "AsyncStringStream is closed")
   result = min(size, str.data.len - str.pos)
-  copyMem(buf, addr str.data[str.pos], result)
-  str.pos += result
   if result == 0:
     str.eof = true
+  else:
+    copyMem(buf, addr str.data[str.pos], result)
+    str.pos += result
 
 proc strWrite(s: AsyncStream, buf: pointer, size: int) {.async.} =
   let str = AsyncStringStream(s)
