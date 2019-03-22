@@ -4,10 +4,10 @@ import ospaths, strutils, sequtils
 
 type Target {.pure.} = enum JS, C
 
-template dep(task: untyped): stmt =
+template dep(task: untyped): untyped =
   selfExec astToStr(task)
 
-template deps(a, b: untyped): stmt =
+template deps(a, b: untyped): untyped =
   dep(a)
   dep(b)
 

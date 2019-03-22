@@ -3,7 +3,7 @@
 import parseutils, sequtils, macros, options, strutils, ./formatters, ./parsers
 
 proc parseIntFmt(fmtp: string): tuple[maxLen: int, fillChar: char] =
-  var maxLen = if fmtp == "": 0 else: strToInt(fmtp)
+  var maxLen = if fmtp.len == 0: 0 else: strToInt(fmtp)
   var minus = fmtp.len > 0 and fmtp[0] == '-'
   var fillChar = if ((minus and fmtp.len > 1) or fmtp.len > 0) and fmtp[if minus: 1 else: 0] == '0': '0' else: ' '
   (maxLen, fillChar)
@@ -11,7 +11,7 @@ proc parseIntFmt(fmtp: string): tuple[maxLen: int, fillChar: char] =
 proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: Option[int], fillChar: char] =
   result.fillChar = ' '
 
-  if fmtp == "":
+  if fmtp.len == 0:
     return
   var t = ""
   var minus = 1
@@ -76,7 +76,7 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
           fmtp = fmt[1..idx-1]
         break
       inc idx
-    if fmtm == "":
+    if fmtm.len == 0:
       nodes.add(parseExpr("$(" & exp & ")"))
       nodes.add(newLit(fmt))
     else:

@@ -87,7 +87,7 @@ suite "AsyncChunkedStream":
     let input = newAsyncStringStream("0\c\L\c\Lremainder")
     let wrapped = newAsyncChunkedStream(input)
 
-    check: waitFor(wrapped.readAll) == ""
+    check: waitFor(wrapped.readAll).len == 0
     check: wrapped.atEnd
     check: not input.atEnd
 

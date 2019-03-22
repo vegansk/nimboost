@@ -202,7 +202,7 @@ proc newType(
 
 # Workaround for VM bug
 proc isNil(t: Type): bool =
-  t == nil or t.header.name.isNil
+  t == nil or t.header.name.len == 0
 
 proc `$`(t: Type): string =
   if t.isNil:

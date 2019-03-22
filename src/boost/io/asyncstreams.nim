@@ -30,7 +30,7 @@ import asyncdispatch, asyncnet, asyncfile, macros
 ##    var res = newSeq[string]()
 ##    while true:
 ##      let l = await s.readLine()
-##      if l == "":
+##      if l.len == 0:
 ##        break
 ##      res.add(l)
 ##    doAssert(res.join(", ") == "Hello, world!")

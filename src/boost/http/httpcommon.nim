@@ -35,14 +35,14 @@ proc formEncode*(form: Props): string =
   ## Encodes ``form`` to `application/x-www-form-urlencoded` format
   for k, v in form.pairs:
     let s = urlEncode(k) & "=" & urlEncode(v)
-    if result.isNil:
+    if result.len == 0:
       result = s
     else:
       result &= "&" & s
 
 proc formDecode*(data: string, form: var Props) =
   ## Decodes ``data`` from `application/x-www-form-urlencoded` format into ``form``
-  if form.isNil:
+  if form.len == 0:
     form = newProps()
   else:
     form.clear
@@ -69,7 +69,7 @@ proc readHeaders*(s: AsyncStream): Future[Props] {.async.} =
   var prevLine = ""
   while true:
     let line = await s.readLine
-    if line == "":
+    if line.len == 0:
       break
     if line[0] == ' ' or line[0] == '\t':
       prevLine.add(line[line.skipWhitespace..^1])

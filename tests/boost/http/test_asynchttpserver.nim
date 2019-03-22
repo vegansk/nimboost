@@ -78,6 +78,8 @@ suite "asynchttpserver":
   let url = "http://" & HOST & ":" & $PORT.int
 
   spawn serverThread()
+  #TODO: Wait for server to start
+  sleep(1000)
   defer: discard newHttpClient().postContent(url & "/quit", "")
 
   test "GET":
