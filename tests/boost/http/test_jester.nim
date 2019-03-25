@@ -1,11 +1,20 @@
 # Copyright (C) 2015 Dominik Picheta
 # MIT License - Look at license.txt for details.
-import boost.http.jester, asyncdispatch, strutils, random, os, asyncnet, re, threadpool, httpclient, unittest
+import boost/http/jester,
+       asyncdispatch,
+       strutils,
+       random,
+       os,
+       asyncnet,
+       re,
+       threadpool,
+       httpclient,
+       unittest
 
 const PORT = 9997.Port
 const HOST = "localhost"
 
-include impl.run_test_server
+include impl/run_test_server
 
 suite "Jester":
 

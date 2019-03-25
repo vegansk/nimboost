@@ -108,7 +108,7 @@ macro fmt*(fmt: static[string]): untyped =
   ##
   ## .. code-block:: Nim
   ##
-  ##   import boost.richstring
+  ##   import boost/richstring
   ##
   ##   let s = "string"
   ##   assert fmt"${s[0..2].toUpperAscii}" == "STR"

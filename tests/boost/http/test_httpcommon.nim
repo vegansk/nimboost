@@ -1,4 +1,10 @@
-import boost.http.httpcommon, boost.data.props, unittest, strtabs, sequtils, asyncdispatch, boost.io.asyncstreams
+import boost/http/httpcommon,
+       boost/data/props,
+       unittest,
+       strtabs,
+       sequtils,
+       asyncdispatch,
+       boost/io/asyncstreams
 
 suite "HTTP utils":
   test "URL encode/decode":

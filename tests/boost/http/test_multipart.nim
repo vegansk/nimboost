@@ -1,8 +1,8 @@
-import boost.http.multipart,
-       boost.http.httpcommon,
+import boost/http/multipart,
+       boost/http/httpcommon,
        asyncdispatch,
-       boost.io.asyncstreams,
-       boost.data.props,
+       boost/io/asyncstreams,
+       boost/data/props,
        unittest,
        strutils
 

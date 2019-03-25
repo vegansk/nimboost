@@ -1,4 +1,4 @@
-import unittest, boost.data.rbtreem, sets, random, sequtils, algorithm, random
+import unittest, boost/data/rbtreem, sets, random, sequtils, algorithm, random
 
 suite "RBTreeM":
 
@@ -61,8 +61,6 @@ suite "RBTreeM":
     check: t1.del(2).len == 1
     t1.del(4)
     check: t1.del(4).len == 0
-
-  include shuffle
 
   test "Stress":
     randomize(1234)

@@ -1,4 +1,4 @@
-import boost.formatters,
+import boost/formatters,
        unittest
 
 suite "formatters":

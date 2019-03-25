@@ -1,12 +1,12 @@
 ## This is in a separate file since we need access to private functions, so
 ## we have to include rather than import.
 
-include boost.http.asynchttpserver
+include boost/http/asynchttpserver
 
 import unittest,
        asyncdispatch,
        strutils,
-       boost.io.asyncstreams
+       boost/io/asyncstreams
 
 suite "RequestBodyStream":
   test "should fulfill its contracts":

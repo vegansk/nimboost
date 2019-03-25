@@ -549,11 +549,11 @@ template uri*(address = "", absolute = true, addScriptName = true): untyped =
   ## Convenience template which can be used in a route.
   request.makeUri(address, absolute, addScriptName)
 
-proc daysForward*(days: int): TimeInfo =
-  ## Returns a TimeInfo object referring to the current time plus ``days``.
-  (getTime() + initInterval(days = days)).utc
+proc daysForward*(days: int): DateTime =
+  ## Returns a DateTime object referring to the current time plus ``days``.
+  return getTime().utc + initTimeInterval(days = days)
 
-template setCookie*(name, value: string, expires: TimeInfo): typed =
+template setCookie*(name, value: string, expires: DateTime): typed =
   ## Creates a cookie which stores ``value`` under ``name``.
   bind setCookie
   if response.data[2].hasKey("Set-Cookie"):
@@ -649,7 +649,7 @@ proc transformRouteBody(node, thisRouteSym: NimNode): NimNode {.compiletime.} =
   case node.kind
   of nnkCall, nnkCommand:
     if node[0].kind == nnkIdent:
-      case node[0].ident.`$`.normalize
+      case ($node[0]).normalize
       of "pass":
         result = newStmtList()
         result.add node
@@ -666,7 +666,7 @@ proc transformRouteBody(node, thisRouteSym: NimNode): NimNode {.compiletime.} =
         result = newIfStmt((cond, condBody))
       else: discard
   else:
-    for i in 0 .. <node.len:
+    for i in 0 .. node.len - 1:
       result[i] = transformRouteBody(node[i], thisRouteSym)
 
 proc createJesterPattern(body,
@@ -689,10 +689,10 @@ proc determinePatternType(pattern: NimNode): MatchType {.compileTime.} =
     return MSpecial
   of nnkCallStrLit:
     expectKind(pattern[0], nnkIdent)
-    case ($pattern[0].ident).normalize
+    case ($pattern[0]).normalize
     of "re": return MRegex
     else:
-      macros.error("Invalid pattern type: " & $pattern[0].ident)
+      macros.error("Invalid pattern type: " & $pattern[0])
   else:
     macros.error("Unexpected node kind: " & $pattern.kind)
 
@@ -785,10 +785,10 @@ macro routesFuture*(body: untyped): Future[void] =
   var caseStmtTraceBody = newNimNode(nnkStmtList)
   var caseStmtPatchBody = newNimNode(nnkStmtList)
 
-  for i in 0 .. <body.len:
+  for i in 0 .. body.len-1:
     case body[i].kind
     of nnkCommand:
-      let cmdName = body[i][0].ident.`$`.normalize
+      let cmdName = ($body[i][0]).normalize
       case cmdName
       of "get", "post", "put", "delete", "head", "options", "trace", "patch":
         case cmdName

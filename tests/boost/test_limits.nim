@@ -1,4 +1,4 @@
-import unittest, boost.limits, typetraits
+import unittest, boost/limits, typetraits
 
 # Workaround for https://github.com/nim-lang/Nim/issues/4714
 when defined(js):

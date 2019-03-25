@@ -58,7 +58,7 @@
 ##
 ##  *More documentation is coming, for now please see the tests in tests/boost/test_typeutils.nim*
 
-import macros, options, future, strutils
+import macros, options, sugar, strutils
 
 type
   GenericParam = string
@@ -324,7 +324,7 @@ when false:
         obj = obj.getType
       of nnkBracketExpr:
         underlyingAlias = obj
-        obj = obj[0].symbol.getImpl
+        obj = obj[0].getImpl
       else:
         error("Unexpected underlying type kind " & $t.typeKind)
       if maxIter == 0:
@@ -344,7 +344,7 @@ proc genConstructorImpl(`type`: NimNode, n: Option[string], exported: bool): Nim
   expectLen `type`.getTypeInst, 2
   var t = `type`.getTypeInst[1]
   expectKind t, nnkSym
-  t = t.symbol.getImpl
+  t = t.getImpl
   expectLen t, 3
   var obj: NimNode
   var isRef: bool
@@ -380,7 +380,7 @@ proc genConstructorImpl(`type`: NimNode, n: Option[string], exported: bool): Nim
       obj = obj.getType
     of nnkBracketExpr:
       underlyingAlias = obj
-      obj = obj[0].symbol.getImpl
+      obj = obj[0].getImpl
     else:
       error("Unexpected underlying type kind " & $t.typeKind)
   if maxIter == 0:
@@ -413,7 +413,7 @@ proc genConstructorImpl(`type`: NimNode, n: Option[string], exported: bool): Nim
       newIdentDefs(ident($field), parseExpr(repr(field.getTypeInst)))
     if underlyingAlias.kind != nnkEmpty and underlyingGenParams.kind != nnkEmpty:
       for i in 0..<underlyingGenParams.len:
-        if idef[1].kind == nnkIdent and $(underlyingGenParams[i].symbol) == $(idef[1]):
+        if idef[1].kind == nnkIdent and $(underlyingGenParams[i]) == $(idef[1]):
           idef[1] = parseExpr($(underlyingAlias[i+1]))
 
     params.add(idef)

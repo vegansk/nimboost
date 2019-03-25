@@ -1,4 +1,4 @@
-import boost.io.asyncstreams
+import boost/io/asyncstreams
 import unittest, asyncdispatch, asyncnet, threadpool, os, strutils
 
 const PORT = Port(9999)

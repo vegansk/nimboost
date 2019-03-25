@@ -1,4 +1,4 @@
-import boost.data.stackm,
+import boost/data/stackm,
        unittest
 
 suite "StackM":

@@ -1,6 +1,6 @@
-import boost.richstring,
+import boost/richstring,
        strutils,
-       boost.parsers,
+       boost/parsers,
        unittest
 
 {.warning[Deprecated]: off.}
