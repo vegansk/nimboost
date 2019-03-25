@@ -1,4 +1,4 @@
-import boost.data.props, unittest
+import boost/data/props, unittest
 
 suite "Props":
   test "Props":

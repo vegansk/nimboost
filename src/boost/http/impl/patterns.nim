@@ -1,5 +1,5 @@
-# Copyright (C) 2012 Dominik Picheta
-# MIT License - Look at LICENSE for details.
+# Copyright (C) 2012-2018 Dominik Picheta
+# MIT License - Look at license.txt for details.
 import parseutils, strtabs
 type
   NodeType* = enum
@@ -15,14 +15,20 @@ type
 proc parsePattern*(pattern: string): Pattern =
   result = @[]
   template addNode(result: var Pattern, theT: NodeType, theText: string,
-                   isOptional: bool): stmt =
+                   isOptional: bool): typed =
     block:
       var newNode: Node
       newNode.typ = theT
       newNode.text = theText
       newNode.optional = isOptional
       result.add(newNode)
-  
+
+  template `{}`(s: string, i: int): char =
+    if i >= len(s):
+      '\0'
+    else:
+      s[i]
+
   var i = 0
   var text = ""
   while i < pattern.len():
@@ -36,11 +42,11 @@ proc parsePattern*(pattern: string): Pattern =
       inc(i) # Skip @
       var nparam = ""
       i += pattern.parseUntil(nparam, {'/', '?'}, i)
-      var optional = pattern[i] == '?'
+      var optional = pattern{i} == '?'
       result.addNode(NodeField, nparam, optional)
-      if pattern[i] == '?': inc(i) # Only skip ?. / should not be skipped.
+      if pattern{i} == '?': inc(i) # Only skip ?. / should not be skipped.
     of '?':
-      var optionalChar = text[text.len-1]
+      var optionalChar = text[^1]
       setLen(text, text.len-1) # Truncate ``text``.
       # Add the stored text.
       if text != "":
@@ -54,13 +60,10 @@ proc parsePattern*(pattern: string): Pattern =
       if pattern[i] notin {'?', '@', '\\'}:
         raise newException(ValueError, 
                 "This character does not require escaping: " & pattern[i])
-      text.add(pattern[i])
+      text.add(pattern{i})
       inc i # Skip ``pattern[i]``
-      
-      
-      
     else:
-      text.add(pattern[i])
+      text.add(pattern{i})
       inc(i)
   
   if text != "":
@@ -79,12 +82,13 @@ proc check(n: Node, s: string, i: int): bool =
   if cutTo > s.len-1: return false
   return s.substr(i, cutTo) == n.text
 
-proc match*(pattern: Pattern, s: string): tuple[matched: bool, params: StringTableRef] =
+proc match*(pattern: Pattern, s: string):
+      tuple[matched: bool, params: StringTableRef] =
   var i = 0 # Location in ``s``.
 
   result.matched = true
-  result.params = {:}.newStringTable()
-  
+  result.params = newStringTable(modeCaseSensitive)
+
   for ncount, node in pattern:
     case node.typ
     of NodeText:
@@ -108,9 +112,8 @@ proc match*(pattern: Pattern, s: string): tuple[matched: bool, params: StringTab
         stopChar = nextTxtNode.text[0]
       var matchNamed = ""
       i += s.parseUntil(matchNamed, stopChar, i)
-      if matchNamed != "":
-        result.params[node.text] = matchNamed
-      elif matchNamed == "" and not node.optional:
+      result.params[node.text] = matchNamed
+      if matchNamed == "" and not node.optional:
         result.matched = false
         return
 
@@ -126,7 +129,7 @@ when isMainModule:
   doAssert(match(f, "/show/asd/test//").matched)
   doAssert(not match(f, "/show/asd/asd/test/jjj/").matched)
   doAssert(match(f, "/show/@łę¶ŧ←/test/asd/").params["id"] == "@łę¶ŧ←")
-  
+
   let f2 = parsePattern("/test42/somefile.?@ext?/?")
   doAssert(match(f2, "/test42/somefile/").params["ext"] == "")
   doAssert(match(f2, "/test42/somefile.txt").params["ext"] == "txt")

@@ -1,6 +1,6 @@
-from boost.http.asynchttpserver import RequestBody, getStream
-from boost.io.asyncstreams import readAll
-import boost.http.multipart
+from boost/http/asynchttpserver import RequestBody, getStream
+from boost/io/asyncstreams import readAll
+import boost/http/multipart
 
 proc runSocketServer =
   proc run {.gcsafe.} =
@@ -36,7 +36,7 @@ proc runSocketServer =
         redirect(uri(@"url"))
 
       get "/win":
-        cond random(5) < 3
+        cond rand(4) < 3
         resp "<b>You won!</b>"
 
       get "/win":

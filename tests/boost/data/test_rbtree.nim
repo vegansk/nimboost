@@ -1,4 +1,4 @@
-import unittest, boost.data.rbtree, sets, random, sequtils, algorithm, random
+import unittest, boost/data/rbtree, sets, random, sequtils, algorithm, random
 
 suite "RBTree":
   test "Initialization":
@@ -61,8 +61,6 @@ suite "RBTree":
     check: s.len == 4
     s = s.del(1)
     check: s.len == 3
-
-  include shuffle
 
   test "Stress":
     randomize(1234)

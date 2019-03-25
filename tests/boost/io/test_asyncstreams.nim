@@ -1,4 +1,4 @@
-import boost.io.asyncstreams
+import boost/io/asyncstreams
 import unittest, asyncdispatch, asyncnet, threadpool, os, strutils
 
 const PORT = Port(9999)
@@ -156,7 +156,7 @@ world!""")
       var res = newSeq[string]()
       while true:
         let l = await s.readLine()
-        if l == "":
+        if l.len == 0:
           break
         res.add(l)
       doAssert(res.join(", ") == "Hello, world!")
@@ -253,9 +253,9 @@ world!""")
       check: rd == "abcde"
 
       pd = await bs.peekLine
-      check: pd == ""
+      check: pd.len == 0
       
       rd = await bs.readLine
-      check: rd == ""
+      check: rd.len == 0
 
     waitFor doTest()

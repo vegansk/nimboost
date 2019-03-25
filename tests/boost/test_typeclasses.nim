@@ -1,4 +1,4 @@
-import unittest, boost.typeclasses, typetraits
+import unittest, boost/typeclasses, typetraits
 
 # Needed for the ``check`` macro pretty print
 proc `$`(t: typedesc): auto = t.name

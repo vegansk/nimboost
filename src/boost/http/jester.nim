@@ -255,7 +255,7 @@ proc parseReqMethod(reqMethod: string, output: var ReqMeth): bool =
   else:
     result = false
 
-template setMatches(req: expr) = req.matches = matches # Workaround.
+template setMatches(req: untyped) = req.matches = matches # Workaround.
 proc handleRequest(jes: Jester, client: AsyncSocket,
                    path, query: string, body: RequestBody, ip, reqMethod: string,
                    headers: HttpHeaders) {.async.} =
@@ -380,14 +380,14 @@ proc serve*(
 
 template resp*(code: HttpCode,
                headers: openarray[tuple[key, value: string]],
-               content: string): stmt =
+               content: string): typed =
   ## Sets ``(code, headers, content)`` as the response.
   bind TCActionSend, newStringTable
   response.data = (TCActionSend, code, headers.newStringTable, content)
   # The ``route`` macro will add a 'return' after the invokation of this
   # template.
 
-template resp*(content: string, contentType = "text/html;charset=utf-8"): stmt =
+template resp*(content: string, contentType = "text/html;charset=utf-8"): typed =
   ## Sets ``content`` as the response; ``Http200`` as the status code
   ## and ``contentType`` as the Content-Type.
   bind TCActionSend, newStringTable, strtabs.`[]=`
@@ -399,7 +399,7 @@ template resp*(content: string, contentType = "text/html;charset=utf-8"): stmt =
   # template.
 
 template resp*(code: HttpCode, content: string,
-               contentType = "text/html;charset=utf-8"): stmt =
+               contentType = "text/html;charset=utf-8"): typed =
   ## Sets ``content`` as the response; ``code`` as the status code
   ## and ``contentType`` as the Content-Type.
   bind TCActionSend, newStringTable
@@ -410,7 +410,7 @@ template resp*(code: HttpCode, content: string,
   # The ``route`` macro will add a 'return' after the invokation of this
   # template.
 
-template body*(): expr =
+template body*(): untyped =
   ## Gets the body of the request.
   ##
   ## **Note:** It's usually a better idea to use the ``resp`` templates.
@@ -419,19 +419,19 @@ template body*(): expr =
   # This means that it is up to guessAction to infer this if the user adds
   # something to the body for example.
 
-template headers*(): expr =
+template headers*(): untyped =
   ## Gets the headers of the request.
   ##
   ## **Note:** It's usually a better idea to use the ``resp`` templates.
   response.data[2]
 
-template status*(): expr =
+template status*(): untyped =
   ## Gets the status of the request.
   ##
   ## **Note:** It's usually a better idea to use the ``resp`` templates.
   response.data[1]
 
-template redirect*(url: string): stmt =
+template redirect*(url: string): typed =
   ## Redirects to ``url``. Returns from this request handler immediately.
   ## Any set response headers are preserved for this request.
   bind TCActionSend, newStringTable
@@ -442,7 +442,7 @@ template redirect*(url: string): stmt =
   # The ``route`` macro will add a 'return' after the invokation of this
   # template.
 
-template pass*(): stmt =
+template pass*(): typed =
   ## Skips this request handler.
   ##
   ## If you want to stop this request from going further use ``halt``.
@@ -450,7 +450,7 @@ template pass*(): stmt =
   # The ``route`` macro will perform a transformation which ensures a
   # call to this template behaves correctly.
 
-template cond*(condition: bool): stmt =
+template cond*(condition: bool): typed =
   ## If ``condition`` is ``False`` then ``pass`` will be called,
   ## i.e. this request handler will be skipped.
   # The ``route`` macro will perform a transformation which ensures a
@@ -458,7 +458,7 @@ template cond*(condition: bool): stmt =
 
 template halt*(code: HttpCode,
                headers: varargs[tuple[key, val: string]],
-               content: string): stmt =
+               content: string): typed =
   ## Immediately replies with the specified request. This means any further
   ## code will not be executed after calling this template in the current
   ## route.
@@ -467,21 +467,21 @@ template halt*(code: HttpCode,
   # The ``route`` macro will add a 'return' after the invokation of this
   # template.
 
-template halt*(): stmt =
+template halt*(): typed =
   ## Halts the execution of this request immediately. Returns a 404.
   ## All previously set values are **discarded**.
   halt(Http404, {"Content-Type": "text/html;charset=utf-8"}, error($Http404, jesterVer))
 
-template halt*(code: HttpCode): stmt =
+template halt*(code: HttpCode): typed =
   halt(code, {"Content-Type": "text/html;charset=utf-8"}, error($code, jesterVer))
 
-template halt*(content: string): stmt =
+template halt*(content: string): typed =
   halt(Http404, {"Content-Type": "text/html;charset=utf-8"}, content)
 
-template halt*(code: HttpCode, content: string): stmt =
+template halt*(code: HttpCode, content: string): typed =
   halt(code, {"Content-Type": "text/html;charset=utf-8"}, content)
 
-template attachment*(filename = ""): stmt =
+template attachment*(filename = ""): typed =
   ## Creates an attachment out of ``filename``. Once the route exits,
   ## ``filename`` will be sent to the person making the request and web browsers
   ## will be hinted to open their Save As dialog box.
@@ -493,7 +493,7 @@ template attachment*(filename = ""): stmt =
     if not response.data[2].hasKey("Content-Type") and ext != "":
       response.data[2]["Content-Type"] = getMimetype(request.settings.mimes, ext)
 
-template `@`*(s: string): expr =
+template `@`*(s: string): untyped =
   ## Retrieves the parameter ``s`` from ``request.params``. ``""`` will be
   ## returned if parameter doesn't exist.
   if request.params.hasKey(s):
@@ -545,15 +545,15 @@ proc makeUri*(request: jester.Request, address = "", absolute = true,
     uri = uri / request.pathInfo
   return $uri
 
-template uri*(address = "", absolute = true, addScriptName = true): expr =
+template uri*(address = "", absolute = true, addScriptName = true): untyped =
   ## Convenience template which can be used in a route.
   request.makeUri(address, absolute, addScriptName)
 
-proc daysForward*(days: int): TimeInfo =
-  ## Returns a TimeInfo object referring to the current time plus ``days``.
-  (getTime() + initInterval(days = days)).utc
+proc daysForward*(days: int): DateTime =
+  ## Returns a DateTime object referring to the current time plus ``days``.
+  return getTime().utc + initTimeInterval(days = days)
 
-template setCookie*(name, value: string, expires: TimeInfo): stmt =
+template setCookie*(name, value: string, expires: DateTime): typed =
   ## Creates a cookie which stores ``value`` under ``name``.
   bind setCookie
   if response.data[2].hasKey("Set-Cookie"):
@@ -632,7 +632,7 @@ proc ctParsePattern(pattern: string): NimNode {.compiletime.} =
       newStrLitNode(node.text),
       newIdentNode(if node.optional: "true" else: "false"))
 
-template setDefaultResp(): stmt =
+template setDefaultResp(): typed =
   # TODO: bindSym this in the 'routes' macro and put it in each route
   bind TCActionNothing, newStringTable
   response.data.action = TCActionNothing
@@ -640,7 +640,7 @@ template setDefaultResp(): stmt =
   response.data.headers = {:}.newStringTable
   response.data.content = ""
 
-template declareSettings(): stmt {.immediate, dirty.} =
+template declareSettings(): typed {.dirty.} =
   when not declaredInScope(settings):
     var settings = newSettings()
 
@@ -649,7 +649,7 @@ proc transformRouteBody(node, thisRouteSym: NimNode): NimNode {.compiletime.} =
   case node.kind
   of nnkCall, nnkCommand:
     if node[0].kind == nnkIdent:
-      case node[0].ident.`$`.normalize
+      case ($node[0]).normalize
       of "pass":
         result = newStmtList()
         result.add node
@@ -666,7 +666,7 @@ proc transformRouteBody(node, thisRouteSym: NimNode): NimNode {.compiletime.} =
         result = newIfStmt((cond, condBody))
       else: discard
   else:
-    for i in 0 .. <node.len:
+    for i in 0 .. node.len - 1:
       result[i] = transformRouteBody(node[i], thisRouteSym)
 
 proc createJesterPattern(body,
@@ -689,10 +689,10 @@ proc determinePatternType(pattern: NimNode): MatchType {.compileTime.} =
     return MSpecial
   of nnkCallStrLit:
     expectKind(pattern[0], nnkIdent)
-    case ($pattern[0].ident).normalize
+    case ($pattern[0]).normalize
     of "re": return MRegex
     else:
-      macros.error("Invalid pattern type: " & $pattern[0].ident)
+      macros.error("Invalid pattern type: " & $pattern[0])
   else:
     macros.error("Unexpected node kind: " & $pattern.kind)
 
@@ -758,7 +758,7 @@ template enumValue(
     newIdentNode(valueName)
   )
 
-macro routesFuture*(body: stmt): untyped{.immediate.} =
+macro routesFuture*(body: untyped): Future[void] =
   ## This version of `routes` returns a `Future` that runs until the server
   ## encounters an error from which it cannot recover (for example,
   ## when attempting to bind on a port that is already taken),
@@ -785,10 +785,10 @@ macro routesFuture*(body: stmt): untyped{.immediate.} =
   var caseStmtTraceBody = newNimNode(nnkStmtList)
   var caseStmtPatchBody = newNimNode(nnkStmtList)
 
-  for i in 0 .. <body.len:
+  for i in 0 .. body.len-1:
     case body[i].kind
     of nnkCommand:
-      let cmdName = body[i][0].ident.`$`.normalize
+      let cmdName = ($body[i][0]).normalize
       case cmdName
       of "get", "post", "put", "delete", "head", "options", "trace", "patch":
         case cmdName
@@ -869,11 +869,11 @@ macro routesFuture*(body: stmt): untyped{.immediate.} =
   #echo toStrLit(result)
   #echo treeRepr(result)
 
-template routes*(body: stmt): untyped {.immediate.} =
+template routes*(body: untyped): typed =
   bind asyncCheck, routesFuture
   asyncCheck routesFuture(body)
 
-macro settings*(body: stmt): stmt {.immediate.} =
+macro settings*(body: untyped): typed =
   #echo(treeRepr(body))
   expectKind(body, nnkStmtList)
 

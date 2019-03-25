@@ -77,10 +77,6 @@ proc clear*(p: var Props) =
   ## Clears mutable properties set ``p``
   ((seq[Prop])p).setLen(0)
 
-proc isNil*(p: Props): bool =
-  ## Checks 
-  ((seq[Prop])p).isNil
-
 proc toStringTable*(p: Props, t: StringTableRef) =
   for k, v in p.pairs:
     t[k] = v

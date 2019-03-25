@@ -300,7 +300,7 @@ proc processOneRequest(
 
     await client.recvLineInto(lineFut) # TODO: Timeouts.
 
-    if lineFut.mget == "":
+    if lineFut.mget.len == 0:
       # Can't read - connection is closed.
       return false
 
@@ -332,7 +332,7 @@ proc processOneRequest(
     lineFut.clean()
     await client.recvLineInto(lineFut)
 
-    if lineFut.mget == "": return false
+    if lineFut.mget.len == 0: return false
     if lineFut.mget == "\c\L": break
     let (key, value) = parseHeader(lineFut.mget)
     request.headers[key] = value

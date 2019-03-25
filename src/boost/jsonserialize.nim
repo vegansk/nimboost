@@ -1,4 +1,4 @@
-import json, strutils, algorithm, boost.parsers
+import json, strutils, algorithm, boost/parsers
 
 type
   FieldException* = object of Exception
@@ -28,7 +28,7 @@ proc fromJson*(_: typedesc[int], n: JsonNode): int =
   if n == nil:
     raise newFieldException("Can't get field of type int")
   else:
-    return n.getNum.int
+    return n.getInt
 
 proc toJson*(v: int): JsonNode =
   newJInt(v)

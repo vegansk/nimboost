@@ -52,11 +52,11 @@ proc readExactly(s: AsyncChunkedStream, size: Natural): Future[string] {.async.}
 proc readExpected(
   s: AsyncChunkedStream,
   expected: string,
-  description: string = nil
+  description: string = ""
 ): Future[void] {.async.} =
   let got = await s.readExactly(expected.len)
   if expected != got:
-    let effectiveDesc = if description.isNil: escape(expected) else: description
+    let effectiveDesc = if description.len == 0: escape(expected) else: description
     raiseError(s, effectiveDesc & " expected, got " & escape(got))
 
 proc readHttpLine(s: AsyncChunkedStream): Future[string] {.async.} =

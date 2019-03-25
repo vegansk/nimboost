@@ -1,4 +1,10 @@
-import boost.http.httpcommon, boost.data.props, unittest, strtabs, sequtils, asyncdispatch, boost.io.asyncstreams
+import boost/http/httpcommon,
+       boost/data/props,
+       unittest,
+       strtabs,
+       sequtils,
+       asyncdispatch,
+       boost/io/asyncstreams
 
 suite "HTTP utils":
   test "URL encode/decode":
@@ -58,5 +64,5 @@ Content-Transfer-Encoding: binary
     ]
     # And now check that the stream is not corrupted
     check: not s.atEnd
-    check: (waitFor s.readLine) == ""
+    check: (waitFor s.readLine).len == 0
     check: s.atEnd

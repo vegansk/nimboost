@@ -1,12 +1,12 @@
 ## This is in a separate file since we need access to private functions, so
 ## we have to include rather than import.
 
-include boost.http.asynchttpserver
+include boost/http/asynchttpserver
 
 import unittest,
        asyncdispatch,
        strutils,
-       boost.io.asyncstreams
+       boost/io/asyncstreams
 
 suite "RequestBodyStream":
   test "should fulfill its contracts":
@@ -36,5 +36,5 @@ suite "RequestBodyStream":
         let expectedS1 = bodyStr[0..<min(bodyStr.len, i)]
         check: s1 == expectedS1
         check: (s1 & s2) == bodyStr
-        check: s3 == ""
+        check: s3.len == 0
         check: underlying.getPosition == bodyStr.len

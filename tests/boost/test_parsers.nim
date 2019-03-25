@@ -1,4 +1,4 @@
-import unittest, boost.parsers, boost.limits
+import unittest, boost/parsers, boost/limits
 
 from logging import nil
 

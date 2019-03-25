@@ -1,4 +1,4 @@
-import boost.http.asynchttpserver
+import boost/http/asynchttpserver
 import unittest,
        asyncdispatch,
        threadpool,
@@ -6,7 +6,7 @@ import unittest,
        net,
        os,
        strutils,
-       boost.io.asyncstreams
+       boost/io/asyncstreams
 
 const PORT = 9998.Port
 const HOST = "localhost"
@@ -78,6 +78,8 @@ suite "asynchttpserver":
   let url = "http://" & HOST & ":" & $PORT.int
 
   spawn serverThread()
+  #TODO: Wait for server to start
+  sleep(1000)
   defer: discard newHttpClient().postContent(url & "/quit", "")
 
   test "GET":

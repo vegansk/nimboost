@@ -24,7 +24,7 @@ proc parseUrlQuery*(query: string, result: var StringTableRef) =
 
 ]#
 
-template parseContentDisposition(): stmt =
+template parseContentDisposition(): untyped =
   var hCount = 0
   while hCount < hValue.len()-1:
     var key = ""

@@ -1,4 +1,4 @@
-import boost.data.memory,
+import boost/data/memory,
        unittest
 
 suite "Memory":

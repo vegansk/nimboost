@@ -1,5 +1,5 @@
-import boost.typeutils,
-       boost.jsonserialize,
+import boost/typeutils,
+       boost/jsonserialize,
        unittest,
        macros,
        ./test_typeutils_int,
@@ -427,7 +427,7 @@ suite "typeutils - data keyword":
 
     let j1 = x1.toJson
     check: j1["a"].getStr == "a"
-    check: j1["b"].getNum == 1
+    check: j1["b"].getInt == 1
 
     data TestAdt, json:
       Br1:
@@ -441,7 +441,7 @@ suite "typeutils - data keyword":
       discard fromJson(TestAdt, parseJson"""{ "A": "a", "B": 1 }""")
     let j2 = x2.toJson
     check: j2["kind"].getStr == "Br1"
-    check: j2["a"].getNum == 1
+    check: j2["a"].getInt == 1
 
   test "ADT with empty branch":
     data ADT, copy, eq, show, json:

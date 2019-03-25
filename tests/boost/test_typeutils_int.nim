@@ -1,4 +1,4 @@
-import boost.typeutils
+import boost/typeutils
 
 type GlobalX* = object
   a*: int
